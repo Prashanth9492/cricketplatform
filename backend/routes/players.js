@@ -13,7 +13,9 @@ const upload = multer({ storage });
 // GET all players
 router.get('/', async (req, res) => {
   try {
-    const players = await Player.find().sort({ createdAt: -1 });
+    const { team } = req.query;
+    const filter = team ? { team } : {};
+    const players = await Player.find(filter).sort({ createdAt: -1 });
     res.json(players);
   } catch (err) {
     res.status(500).json({ message: err.message });

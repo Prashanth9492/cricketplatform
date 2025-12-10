@@ -38,27 +38,26 @@ export const login = async (req, res) => {
   try {
     const { username, password } = req.body;
     if (!username || !password) {
-      return res.status(400).json({ error: 'Username and password are required.' });
+      return res.status(400).json({ message: 'Username and password are required.' });
     }
     const user = await User.findOne({ username });
     if (!user) {
-      return res.status(401).json({ error: 'Invalid username or password.' });
+      return res.status(401).json({ message: 'Invalid username or password.' });
     }
     const isMatch = await user.comparePassword(password);
     if (!isMatch) {
-      return res.status(401).json({ error: 'Invalid username or password.' });
+      return res.status(401).json({ message: 'Invalid username or password.' });
     }
     const token = generateToken(user);
-    // Set JWT in HTTP-only cookie
-    res.cookie('token', token, {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
-      maxAge: 24 * 60 * 60 * 1000, // 1 day
-      sameSite: 'strict',
+    // Return token and role for frontend
+    res.json({ 
+      message: 'Login successful', 
+      token: token,
+      role: user.role 
     });
-    res.json({ message: 'Login successful', role: user.role });
   } catch (err) {
-    res.status(500).json({ error: 'Server error during login.' });
+    console.error('Login error:', err);
+    res.status(500).json({ message: 'Server error during login.' });
   }
 };
 

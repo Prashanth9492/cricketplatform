@@ -1,7 +1,6 @@
-import { LogOut, Sun, Moon } from "lucide-react";
+import { LogOut, Sun, Moon, Trophy } from "lucide-react";
 import { useLocation, Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
-import srkrLogo from "@/assets/srkrec-logo.png";
 import { useEffect, useState } from 'react';
 
 const NAV_LINKS = [
@@ -17,10 +16,20 @@ const NAV_LINKS = [
 ];
 
 function useTheme() {
-  const [theme, setTheme] = useState(() => localStorage.getItem('theme') || 'light');
+  const [theme, setTheme] = useState(() => {
+    try {
+      return localStorage.getItem('theme') || 'light';
+    } catch {
+      return 'light';
+    }
+  });
   useEffect(() => {
     document.documentElement.classList.toggle('dark', theme === 'dark');
-    localStorage.setItem('theme', theme);
+    try {
+      localStorage.setItem('theme', theme);
+    } catch (error) {
+      console.warn('localStorage not available:', error);
+    }
   }, [theme]);
   return [theme, setTheme] as const;
 }
@@ -44,8 +53,12 @@ export function Layout({ children }: LayoutProps) {
         {/* First row: Logo and theme toggle */}
         <div className="flex items-center justify-between h-16">
           {/* Logo */}
-          <div className="flex items-center">
-            <img src={srkrLogo} alt="SRKR Engineering College" className="h-10 w-auto" />
+          <div className="flex items-center gap-2">
+            <Trophy className="h-8 w-8 text-yellow-500" />
+            <div>
+              <h1 className="text-xl font-bold text-foreground">Cricket Championship</h1>
+              <p className="text-xs text-muted-foreground">Live Scores & Updates</p>
+            </div>
           </div>
           {/* Theme toggle button - positioned at the right corner */}
           <div className="flex items-center">

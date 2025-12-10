@@ -34,13 +34,11 @@ const OverSchema = new mongoose.Schema({
 const InningsSchema = new mongoose.Schema({
   inningsNumber: { type: Number, required: true }, // 1 or 2
   battingTeam: { 
-    type: String, 
-    enum: ['AGNI-A', 'AGNI-B', 'AAKASH-A', 'AAKASH-B', 'VAYU-A', 'VAYU-B', 'JAL-A', 'JAL-B', 'PRUDHVI-A', 'PRUDHVI-B'],
+    type: String,
     required: true 
   },
   bowlingTeam: { 
-    type: String, 
-    enum: ['AGNI-A', 'AGNI-B', 'AAKASH-A', 'AAKASH-B', 'VAYU-A', 'VAYU-B', 'JAL-A', 'JAL-B', 'PRUDHVI-A', 'PRUDHVI-B'],
+    type: String,
     required: true 
   },
   runs: { type: Number, default: 0 },
@@ -91,13 +89,11 @@ const MatchSchema = new mongoose.Schema({
   matchId: { type: String, unique: true, required: true },
   title: { type: String, required: true },
   team1: { 
-    type: String, 
-    enum: ['AGNI-A', 'AGNI-B', 'AAKASH-A', 'AAKASH-B', 'VAYU-A', 'VAYU-B', 'JAL-A', 'JAL-B', 'PRUDHVI-A', 'PRUDHVI-B'],
+    type: String,
     required: true 
   },
   team2: { 
-    type: String, 
-    enum: ['AGNI-A', 'AGNI-B', 'AAKASH-A', 'AAKASH-B', 'VAYU-A', 'VAYU-B', 'JAL-A', 'JAL-B', 'PRUDHVI-A', 'PRUDHVI-B'],
+    type: String,
     required: true 
   },
   venue: { type: String, required: true },
@@ -109,8 +105,7 @@ const MatchSchema = new mongoose.Schema({
   },
   totalOvers: { type: Number, default: 20 },
   tossWinner: { 
-    type: String, 
-    enum: ['AGNI-A', 'AGNI-B', 'AAKASH-A', 'AAKASH-B', 'VAYU-A', 'VAYU-B', 'JAL-A', 'JAL-B', 'PRUDHVI-A', 'PRUDHVI-B']
+    type: String
   },
   tossDecision: { 
     type: String, 
@@ -127,8 +122,7 @@ const MatchSchema = new mongoose.Schema({
   bowlerStats: [BowlerStatsSchema],
   result: {
     winner: { 
-      type: String, 
-      enum: ['AGNI-A', 'AGNI-B', 'AAKASH-A', 'AAKASH-B', 'VAYU-A', 'VAYU-B', 'JAL-A', 'JAL-B', 'PRUDHVI-A', 'PRUDHVI-B', 'tie', 'no_result'] 
+      type: String
     },
     winBy: { type: String }, // "10 runs", "6 wickets", etc.
     playerOfMatch: { type: String }

@@ -25,13 +25,7 @@ import {
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import axios from 'axios';
-
-// Import team images
-import agni from "@/assets/agni.jpg";
-import prudhvi from "@/assets/prudhvi.jpg";
-import vayu from "@/assets/vayu.jpg";
-import jal from "@/assets/jal.jpg";
-import aakash from "@/assets/aakash.png";
+import { Zap, Shield, Award } from 'lucide-react';
 
 interface Player {
   _id?: string;
@@ -53,7 +47,6 @@ interface Player {
   bowlingStyle?: string;
   description?: string;
   photoUrl?: string;
-  pinno: string;
   average?: number;
   strike_rate?: number;
 }
@@ -103,16 +96,15 @@ export default function AdminPlayerDashboard() {
     battingStyle: '',
     bowlingStyle: '',
     description: '',
-    photoUrl: '',
-    pinno: ''
+    photoUrl: ''
   });
 
   const teams = [
-    'AGNI-A', 'AGNI-B',
-    'AAKASH-A', 'AAKASH-B', 
-    'VAYU-A', 'VAYU-B',
-    'JAL-A', 'JAL-B',
-    'PRUDHVI-A', 'PRUDHVI-B'
+    'THUNDER STRIKERS',
+    'ROYAL LIONS',
+    'EAGLES UNITED',
+    'WARRIORS XI',
+    'TITANS CHAMPION'
   ];
   const positions = ['Batsman', 'Bowler', 'All-rounder', 'Wicket-keeper'];
   const battingStyles = ['Right-handed', 'Left-handed'];
@@ -182,30 +174,26 @@ export default function AdminPlayerDashboard() {
     filterPlayers();
   }, [filterPlayers]);
 
-  const getTeamLogo = (team: string) => {
-    // Extract house name from team (e.g., "AGNI-A" -> "AGNI")
-    const houseName = team.split('-')[0];
-    const teamLogos = {
-      'AGNI': agni,
-      'AAKASH': aakash,
-      'VAYU': vayu,
-      'JAL': jal,
-      'PRUDHVI': prudhvi
+  const getTeamIcon = (team: string) => {
+    const teamIcons: Record<string, any> = {
+      'THUNDER STRIKERS': Zap,
+      'ROYAL LIONS': Award,
+      'EAGLES UNITED': TrendingUp,
+      'WARRIORS XI': Shield,
+      'TITANS CHAMPION': Trophy
     };
-    return teamLogos[houseName as keyof typeof teamLogos] || null;
+    return teamIcons[team] || Trophy;
   };
 
   const getTeamColor = (team: string) => {
-    // Extract house name from team (e.g., "AGNI-A" -> "AGNI")
-    const houseName = team.split('-')[0];
-    const teamColors = {
-      'AGNI': '#FF4444',
-      'AAKASH': '#4444FF',
-      'VAYU': '#44FF44',
-      'JAL': '#44FFFF',
-      'PRUDHVI': '#FF44FF'
+    const teamColors: Record<string, string> = {
+      'THUNDER STRIKERS': '#FF4444',
+      'ROYAL LIONS': '#4444FF',
+      'EAGLES UNITED': '#44FF44',
+      'WARRIORS XI': '#f18f20ff',
+      'TITANS CHAMPION': '#FF44FF'
     };
-    return teamColors[houseName as keyof typeof teamColors] || '#666';
+    return teamColors[team] || '#666';
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -226,15 +214,6 @@ export default function AdminPlayerDashboard() {
         title: "Validation Error", 
         description: "Please select a team",
         variant: "destructive",
-      });
-      return;
-    }
-    
-    if (!playerForm.pinno.trim()) {
-      toast({
-        title: "Validation Error",
-        description: "PIN number is required",
-        variant: "destructive", 
       });
       return;
     }
@@ -413,9 +392,7 @@ export default function AdminPlayerDashboard() {
       position: '',
       battingStyle: '',
       bowlingStyle: '',
-      description: '',
-      photoUrl: '',
-      pinno: ''
+      description: '',      photoUrl: ''
     });
     setSelectedPlayer(null);
     setSelectedFile(null);
@@ -588,11 +565,17 @@ export default function AdminPlayerDashboard() {
                     </TableCell>
                     <TableCell>
                       <div className="flex items-center gap-2">
-                        <img 
-                          src={getTeamLogo(player.team)} 
-                          alt={player.team} 
-                          className="w-6 h-6 rounded-full"
-                        />
+                        {(() => {
+                          const TeamIcon = getTeamIcon(player.team);
+                          return (
+                            <div 
+                              className="w-6 h-6 rounded-full flex items-center justify-center"
+                              style={{ backgroundColor: getTeamColor(player.team) }}
+                            >
+                              <TeamIcon className="w-4 h-4 text-white" />
+                            </div>
+                          );
+                        })()}
                         <Badge 
                           variant="secondary" 
                           style={{ backgroundColor: getTeamColor(player.team) + '20', color: getTeamColor(player.team) }}
@@ -667,16 +650,7 @@ export default function AdminPlayerDashboard() {
                     />
                   </div>
                   <div>
-                    <Label htmlFor="pinno">PIN Number *</Label>
-                    <Input
-                      id="pinno"
-                      value={playerForm.pinno}
-                      onChange={(e) => handleInputChange('pinno', e.target.value)}
-                      required
-                    />
-                  </div>
-                  <div>
-                    <Label htmlFor="team">Team *</Label>
+                    <Label htmlFor="team">Team *</Label>  
                     <Select value={playerForm.team} onValueChange={(value) => handleInputChange('team', value)}>
                       <SelectTrigger>
                         <SelectValue placeholder="Select team" />

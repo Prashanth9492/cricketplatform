@@ -3,7 +3,7 @@ import React, { useState, useEffect } from "react";
 import axios from "axios";
 
 
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -34,10 +34,12 @@ import {
   Save,
   Eye,
   User,
-  LogOut
+  LogOut,
+  Lock
 } from "lucide-react";
 // Remove useCollection, we'll use RTDB listeners below
 import { useToast } from "@/hooks/use-toast";
+import { useAuth } from "@/components/AuthProvider";
 import AdminPlayerDashboard from "@/components/admin/AdminPlayerDashboard";
 import LiveScoringAdmin from "@/components/admin/LiveScoringAdmin";
 
@@ -52,14 +54,22 @@ interface DashboardStats {
 
 export default function Admin() {
   const { toast } = useToast();
+  const { user, isAdmin, signIn, signOut } = useAuth();
+  
+  // Login form state
+  const [loginUsername, setLoginUsername] = useState("");
+  const [loginPassword, setLoginPassword] = useState("");
+  const [loginLoading, setLoginLoading] = useState(false);
+  const [loginError, setLoginError] = useState("");
+  
   // State for form management (hooks must be called unconditionally)
   const [selectedFiles, setSelectedFiles] = useState<{[key: string]: File | null}>({});
   // const [firebaseError, setFirebaseError] = useState<string | null>(null);
   const [startTime] = useState(Date.now());
   const [formData, setFormData] = useState({
     team: { name: '', coach: '', captain: '', homeGround: '', description: '' },
-    player: { name: '', age: '', position: '', team: '', battingStyle: '', bowlingStyle: '', house: '', description: '' },
-    match: { team1: '', team2: '', date: '', venue: '', type: 'League', status: 'Scheduled' },
+    player: { name: '', age: '', position: '', team: '', battingStyle: '', bowlingStyle: '', description: '' },
+    match: { team1: '', team2: '', matchDate: '', venue: '', type: 'League', status: 'scheduled', winner: '' },
     news: { title: '', content: '', category: 'General', featured: false },
     gallery: { title: '', description: '', category: 'Matches' }
   });
@@ -428,23 +438,34 @@ export default function Admin() {
   const handleSubmit = async (category: keyof typeof collectionMap, data: Record<string, unknown>) => {
     try {
       let formDataToSend: FormData | null = null;
-        let endpoint = `${import.meta.env.VITE_API_BASE_URL}/${collectionMap[category]}`;
+      let endpoint = `${import.meta.env.VITE_API_BASE_URL}/${collectionMap[category]}`;
+      
+      // Transform match data to include result.winner
+      let processedData = { ...data };
+      if (category === 'match' && data.winner) {
+        const { winner, ...rest } = data;
+        processedData = {
+          ...rest,
+          result: { winner }
+        };
+      }
+      
       // For image upload, use FormData
       if (category === 'team' && selectedFiles['team-logo']) {
         formDataToSend = new FormData();
-        Object.entries(data).forEach(([key, value]) => formDataToSend!.append(key, value as string));
+        Object.entries(processedData).forEach(([key, value]) => formDataToSend!.append(key, value as string));
         formDataToSend.append('logo', selectedFiles['team-logo']!);
       } else if (category === 'player' && selectedFiles['player-photo']) {
         formDataToSend = new FormData();
-        Object.entries(data).forEach(([key, value]) => formDataToSend!.append(key, value as string));
+        Object.entries(processedData).forEach(([key, value]) => formDataToSend!.append(key, value as string));
         formDataToSend.append('photo', selectedFiles['player-photo']!);
       } else if (category === 'news' && selectedFiles['news-image']) {
         formDataToSend = new FormData();
-        Object.entries(data).forEach(([key, value]) => formDataToSend!.append(key, value as string));
+        Object.entries(processedData).forEach(([key, value]) => formDataToSend!.append(key, value as string));
         formDataToSend.append('image', selectedFiles['news-image']!);
       } else if (category === 'gallery') {
         formDataToSend = new FormData();
-        Object.entries(data).forEach(([key, value]) => formDataToSend!.append(key, value as string));
+        Object.entries(processedData).forEach(([key, value]) => formDataToSend!.append(key, value as string));
         // Multiple images
         const galleryImageKeys = Object.keys(selectedFiles).filter(k => k.startsWith('gallery-image'));
         galleryImageKeys.forEach((key) => {
@@ -460,7 +481,7 @@ export default function Admin() {
       if (formDataToSend) {
         res = await axios.post(endpoint, formDataToSend, { headers: { 'Content-Type': 'multipart/form-data' } });
       } else {
-        res = await axios.post(endpoint, data);
+        res = await axios.post(endpoint, processedData);
       }
 
       toast({
@@ -511,11 +532,141 @@ export default function Admin() {
     }
   };
 
+  // Handle login
+  const handleLogin = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setLoginError("");
+    setLoginLoading(true);
+    
+    try {
+      await signIn(loginUsername, loginPassword);
+      toast({
+        title: "Success",
+        description: "Successfully logged in as admin!",
+      });
+    } catch (error: any) {
+      setLoginError(error?.response?.data?.message || error?.message || "Invalid credentials");
+      toast({
+        title: "Login Failed",
+        description: error?.response?.data?.message || error?.message || "Invalid credentials",
+        variant: "destructive",
+      });
+    } finally {
+      setLoginLoading(false);
+    }
+  };
+
+  // Show login form if not authenticated
+  if (!user || !isAdmin) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-gray-50 to-gray-100 dark:from-gray-900 dark:to-gray-800">
+        <Card className="w-full max-w-md">
+          <CardHeader className="space-y-1">
+            <div className="flex items-center justify-center mb-4">
+              <div className="w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center">
+                <Shield className="h-8 w-8 text-primary" />
+              </div>
+            </div>
+            <CardTitle className="text-2xl text-center">Admin Login</CardTitle>
+            <CardDescription className="text-center">
+              Enter your credentials to access the admin dashboard
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <form onSubmit={handleLogin} className="space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="username">Username</Label>
+                <div className="relative">
+                  <User className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
+                  <Input
+                    id="username"
+                    type="text"
+                    placeholder="Enter your username"
+                    className="pl-10"
+                    value={loginUsername}
+                    onChange={(e) => setLoginUsername(e.target.value)}
+                    required
+                  />
+                </div>
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="password">Password</Label>
+                <div className="relative">
+                  <Lock className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
+                  <Input
+                    id="password"
+                    type="password"
+                    placeholder="Enter your password"
+                    className="pl-10"
+                    value={loginPassword}
+                    onChange={(e) => setLoginPassword(e.target.value)}
+                    required
+                  />
+                </div>
+              </div>
+              {loginError && (
+                <div className="text-sm text-red-500 text-center">
+                  {loginError}
+                </div>
+              )}
+              <Button type="submit" className="w-full" disabled={loginLoading}>
+                {loginLoading ? (
+                  <>
+                    <div className="animate-spin rounded-full h-4 w-4 border-t-2 border-b-2 border-white mr-2"></div>
+                    Logging in...
+                  </>
+                ) : (
+                  <>
+                    <Shield className="h-4 w-4 mr-2" />
+                    Login to Admin Panel
+                  </>
+                )}
+              </Button>
+            </form>
+            {/* <div className="mt-6 p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
+              <p className="text-sm text-center text-gray-700 dark:text-gray-300 font-semibold mb-2">Demo Credentials:</p>
+              <div className="text-xs text-gray-600 dark:text-gray-400 space-y-1">
+                <p><span className="font-medium">Username:</span> ponamandi@gmail.com</p>
+                <p><span className="font-medium">Password:</span> prashanth</p>
+              </div>
+            </div> */}
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
 
   {/* Admin Panel for Uploading Data Only */}
+
+      {/* Admin Header with Logout */}
+      <div className="flex items-center justify-between bg-white dark:bg-gray-800 p-6 rounded-lg shadow-md">
+        <div className="flex items-center gap-3">
+          <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center">
+            <Shield className="h-6 w-6 text-primary" />
+          </div>
+          <div>
+            <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Admin Dashboard</h1>
+            <p className="text-sm text-gray-600 dark:text-gray-300">Welcome, {user}</p>
+          </div>
+        </div>
+        <Button
+          variant="outline"
+          onClick={() => {
+            signOut();
+            toast({
+              title: "Logged Out",
+              description: "You have been successfully logged out.",
+            });
+          }}
+          className="gap-2"
+        >
+          <LogOut className="h-4 w-4" />
+          Logout
+        </Button>
+      </div>
 
       {/* Admin Tabs */}
 
@@ -565,14 +716,14 @@ export default function Admin() {
                     <Label htmlFor="team">Team</Label>
                     <Select name="team" required>
                       <SelectTrigger>
-                        <SelectValue placeholder="Select house/team" />
+                        <SelectValue placeholder="Select team" />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="agni">Agni</SelectItem>
-                        <SelectItem value="aakash">Aakash</SelectItem>
-                        <SelectItem value="vayu">Vayu</SelectItem>
-                        <SelectItem value="jal">Jal</SelectItem>
-                        <SelectItem value="prudhvi">Prudhvi</SelectItem>
+                        <SelectItem value="THUNDER STRIKERS">Thunder Strikers</SelectItem>
+                        <SelectItem value="ROYAL LIONS">Royal Lions</SelectItem>
+                        <SelectItem value="EAGLES UNITED">Eagles United</SelectItem>
+                        <SelectItem value="WARRIORS XI">Warriors XI</SelectItem>
+                        <SelectItem value="TITANS CHAMPION">Titans Champion</SelectItem>
                       </SelectContent>
                     </Select>
                   </div>
@@ -650,21 +801,11 @@ export default function Admin() {
                             <SelectValue placeholder="Select Team 1" />
                           </SelectTrigger>
                           <SelectContent>
-                            
-                            <SelectItem value="agni-a">Agni A</SelectItem>
-                            <SelectItem value="agni-b">Agni B</SelectItem>
-                        
-                            <SelectItem value="vayu-a">Vayu A</SelectItem>
-                            <SelectItem value="vayu-b">Vayu B</SelectItem>
-                           
-                            <SelectItem value="aakash-a">Aakash A</SelectItem>
-                            <SelectItem value="aakash-b">Aakash B</SelectItem>
-                            
-                            <SelectItem value="prudhvi-a">Prudhvi A</SelectItem>
-                            <SelectItem value="prudhvi-b">Prudhvi B</SelectItem>
-                         
-                            <SelectItem value="jal-a">Jal A</SelectItem>
-                            <SelectItem value="jal-b">Jal B</SelectItem>
+                            <SelectItem value="THUNDER STRIKERS">Thunder Strikers</SelectItem>
+                            <SelectItem value="ROYAL LIONS">Royal Lions</SelectItem>
+                            <SelectItem value="EAGLES UNITED">Eagles United</SelectItem>
+                            <SelectItem value="WARRIORS XI">Warriors XI</SelectItem>
+                            <SelectItem value="TITANS CHAMPION">Titans Champion</SelectItem>
                           </SelectContent>
                         </Select>
                         
@@ -680,21 +821,11 @@ export default function Admin() {
                           <SelectValue placeholder="Select Team 2" />
                           </SelectTrigger>
                           <SelectContent>
-                          {/* 5 teams only */}
-                            <SelectItem value="agni-a">Agni A</SelectItem>
-                            <SelectItem value="agni-b">Agni B</SelectItem>
-                        
-                            <SelectItem value="vayu-a">Vayu A</SelectItem>
-                            <SelectItem value="vayu-b">Vayu B</SelectItem>
-                           
-                            <SelectItem value="aakash-a">Aakash A</SelectItem>
-                            <SelectItem value="aakash-b">Aakash B</SelectItem>
-                            
-                            <SelectItem value="prudhvi-a">Prudhvi A</SelectItem>
-                            <SelectItem value="prudhvi-b">Prudhvi B</SelectItem>
-                         
-                            <SelectItem value="jal-a">Jal A</SelectItem>
-                            <SelectItem value="jal-b">Jal B</SelectItem>
+                            <SelectItem value="THUNDER STRIKERS">Thunder Strikers</SelectItem>
+                            <SelectItem value="ROYAL LIONS">Royal Lions</SelectItem>
+                            <SelectItem value="EAGLES UNITED">Eagles United</SelectItem>
+                            <SelectItem value="WARRIORS XI">Warriors XI</SelectItem>
+                            <SelectItem value="TITANS CHAMPION">Titans Champion</SelectItem>
                           </SelectContent>
                         </Select>
                       </div>
@@ -704,10 +835,10 @@ export default function Admin() {
                         <Input
                           id="match-date"
                           type="datetime-local"
-                          value={formData.match.date}
+                          value={formData.match.matchDate}
                           onChange={(e) => setFormData(prev => ({
                             ...prev,
-                            match: { ...prev.match, date: e.target.value }
+                            match: { ...prev.match, matchDate: e.target.value }
                           }))}
                         />
                       </div>
@@ -747,21 +878,51 @@ export default function Admin() {
                       
                       <div className="space-y-2">
                         <Label htmlFor="match-status">Status</Label>
-                        <Select onValueChange={(value) => setFormData(prev => ({
-                          ...prev,
-                          match: { ...prev.match, status: value }
-                        }))}>
+                        <Select 
+                          value={formData.match.status}
+                          onValueChange={(value) => setFormData(prev => ({
+                            ...prev,
+                            match: { ...prev.match, status: value, winner: value !== 'completed' ? '' : prev.match.winner }
+                          }))}
+                        >
                           <SelectTrigger>
                             <SelectValue placeholder="Select status" />
                           </SelectTrigger>
                           <SelectContent>
-                            <SelectItem value="Scheduled">Scheduled</SelectItem>
-                            <SelectItem value="Live">Live</SelectItem>
-                            <SelectItem value="Completed">Completed</SelectItem>
-                            <SelectItem value="Cancelled">Cancelled</SelectItem>
+                            <SelectItem value="scheduled">Scheduled</SelectItem>
+                            <SelectItem value="live">Live</SelectItem>
+                            <SelectItem value="completed">Completed</SelectItem>
+                            <SelectItem value="abandoned">Abandoned</SelectItem>
                           </SelectContent>
                         </Select>
                       </div>
+
+                      {/* Winner field - only show when status is completed */}
+                      {formData.match.status === 'completed' && (
+                        <div className="space-y-2">
+                          <Label htmlFor="match-winner">Winner *</Label>
+                          <Select 
+                            value={formData.match.winner}
+                            onValueChange={(value) => setFormData(prev => ({
+                              ...prev,
+                              match: { ...prev.match, winner: value }
+                            }))}
+                          >
+                            <SelectTrigger>
+                              <SelectValue placeholder="Select winner" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="THUNDER STRIKERS">THUNDER STRIKERS</SelectItem>
+                              <SelectItem value="ROYAL LIONS">ROYAL LIONS</SelectItem>
+                              <SelectItem value="EAGLES UNITED">EAGLES UNITED</SelectItem>
+                              <SelectItem value="WARRIORS XI">WARRIORS XI</SelectItem>
+                              <SelectItem value="TITANS CHAMPION">TITANS CHAMPION</SelectItem>
+                              <SelectItem value="tie">Tie</SelectItem>
+                              <SelectItem value="no_result">No Result</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
+                      )}
                     </div>
                   </div>
                   

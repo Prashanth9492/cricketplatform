@@ -6,7 +6,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { toast } from '@/hooks/use-toast';
-import { Play, Pause, RotateCcw, Trophy, AlertCircle } from 'lucide-react';
+import { Play, Pause, RotateCcw, Trophy, AlertCircle, Wifi, WifiOff, Trash2 } from 'lucide-react';
+import { socketService } from '@/lib/socket';
 
 interface Match {
   _id: string;
@@ -78,6 +79,9 @@ interface BowlerStat {
   runs: number;
   wickets: number;
   economy: number;
+  maidens?: number;
+  wides?: number;
+  noBalls?: number;
 }
 
 interface Commentary {
@@ -90,6 +94,11 @@ const LiveScoringAdmin: React.FC = () => {
   const [matches, setMatches] = useState<Match[]>([]);
   const [selectedMatch, setSelectedMatch] = useState<Match | null>(null);
   const [loading, setLoading] = useState(false);
+  const [socketConnected, setSocketConnected] = useState(false);
+  
+  // Player lists
+  const [battingTeamPlayers, setBattingTeamPlayers] = useState<string[]>([]);
+  const [bowlingTeamPlayers, setBowlingTeamPlayers] = useState<string[]>([]);
   
   // Ball entry form state
   const [runs, setRuns] = useState<number>(0);
@@ -118,7 +127,67 @@ const LiveScoringAdmin: React.FC = () => {
 
   useEffect(() => {
     fetchMatches();
-  }, []);
+    
+    // Connect to Socket.IO
+    const socket = socketService.connect();
+    if (socket) {
+      setSocketConnected(socket.connected);
+      
+      socket.on('connect', () => {
+        console.log('🔴 Admin connected to Socket.IO');
+        setSocketConnected(true);
+      });
+      
+      socket.on('disconnect', () => {
+        console.log('🔴 Admin disconnected from Socket.IO');
+        setSocketConnected(false);
+      });
+      
+      // Listen for real-time ball updates
+      socketService.onBallUpdate((data) => {
+        console.log('⚡ Real-time ball update received:', data);
+        
+        // Update selected match if it matches
+        if (selectedMatch && data.matchId === selectedMatch.matchId) {
+          setSelectedMatch(data.match);
+        }
+        
+        // Update matches list
+        setMatches(prev => 
+          prev.map(m => m.matchId === data.matchId ? data.match : m)
+        );
+        
+        // Show toast notification
+        toast({
+          title: "Live Update!",
+          description: data.commentary,
+          duration: 3000,
+        });
+      });
+      
+      // Listen for match started
+      socketService.onMatchStarted((match) => {
+        console.log('🎯 Match started:', match);
+        setMatches(prev => 
+          prev.map(m => m.matchId === match.matchId ? match : m)
+        );
+      });
+    }
+    
+    return () => {
+      socketService.offBallUpdate();
+      socketService.offMatchStarted();
+    };
+  }, [selectedMatch]);
+
+  // Fetch players when match is selected or innings changes
+  useEffect(() => {
+    if (selectedMatch && getCurrentInnings()) {
+      const battingTeam = getCurrentInnings()!.battingTeam;
+      const bowlingTeam = getCurrentInnings()!.bowlingTeam;
+      fetchPlayersForMatch(battingTeam, bowlingTeam);
+    }
+  }, [selectedMatch, selectedMatch?.currentInnings]);
 
   const fetchMatches = async () => {
     try {
@@ -129,6 +198,56 @@ const LiveScoringAdmin: React.FC = () => {
       toast({
         title: "Error",
         description: "Failed to fetch matches",
+        variant: "destructive"
+      });
+    }
+  };
+
+  const fetchPlayersForMatch = async (battingTeam: string, bowlingTeam: string) => {
+    try {
+      console.log('Fetching players for:', { battingTeam, bowlingTeam });
+      
+      // Fetch batting team players from API
+      const battingResponse = await fetch(`http://localhost:5001/api/players?team=${battingTeam}`);
+      if (!battingResponse.ok) {
+        throw new Error(`Failed to fetch batting team players: ${battingResponse.statusText}`);
+      }
+      const battingData = await battingResponse.json();
+      const battingPlayers = battingData.map((p: any) => p.name);
+      
+      // Fetch bowling team players from API
+      const bowlingResponse = await fetch(`http://localhost:5001/api/players?team=${bowlingTeam}`);
+      if (!bowlingResponse.ok) {
+        throw new Error(`Failed to fetch bowling team players: ${bowlingResponse.statusText}`);
+      }
+      const bowlingData = await bowlingResponse.json();
+      const bowlingPlayers = bowlingData.map((p: any) => p.name);
+      
+      console.log('Batting team:', battingTeam, 'Players:', battingPlayers);
+      console.log('Bowling team:', bowlingTeam, 'Players:', bowlingPlayers);
+      
+      setBattingTeamPlayers(battingPlayers);
+      setBowlingTeamPlayers(bowlingPlayers);
+      
+      if (battingPlayers.length === 0) {
+        toast({
+          title: "Warning",
+          description: `No players found for ${battingTeam}. Please add players to this team first.`,
+          variant: "destructive"
+        });
+      }
+      if (bowlingPlayers.length === 0) {
+        toast({
+          title: "Warning",
+          description: `No players found for ${bowlingTeam}. Please add players to this team first.`,
+          variant: "destructive"
+        });
+      }
+    } catch (error) {
+      console.error('Error fetching players:', error);
+      toast({
+        title: "Error",
+        description: error instanceof Error ? error.message : "Failed to fetch players",
         variant: "destructive"
       });
     }
@@ -257,11 +376,91 @@ const LiveScoringAdmin: React.FC = () => {
           title: "Ball Added",
           description: "Score updated successfully"
         });
+      } else {
+        const errorData = await response.json();
+        toast({
+          title: "Error",
+          description: errorData.message || "Failed to add ball",
+          variant: "destructive"
+        });
+      }
+    } catch (error: any) {
+      console.error('Error adding ball:', error);
+      toast({
+        title: "Error",
+        description: error.message || "Failed to add ball",
+        variant: "destructive"
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const deleteMatch = async (matchId: string) => {
+    if (!confirm('Are you sure you want to delete this match? This cannot be undone.')) {
+      return;
+    }
+
+    try {
+      setLoading(true);
+      const response = await fetch(`http://localhost:5001/api/matches/${matchId}`, {
+        method: 'DELETE'
+      });
+      
+      if (response.ok) {
+        if (selectedMatch?._id === matchId) {
+          setSelectedMatch(null);
+        }
+        fetchMatches();
+        toast({
+          title: "Match Deleted",
+          description: "Match has been removed successfully"
+        });
+      } else {
+        throw new Error('Failed to delete match');
       }
     } catch (error) {
       toast({
         title: "Error",
-        description: "Failed to add ball",
+        description: "Failed to delete match",
+        variant: "destructive"
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const endInnings = async () => {
+    if (!selectedMatch) return;
+
+    const currentInnings = getCurrentInnings();
+    const battingTeam = currentInnings?.battingTeam;
+
+    if (!confirm(`Are you sure you want to end ${battingTeam}'s innings?`)) {
+      return;
+    }
+
+    try {
+      setLoading(true);
+      const response = await fetch(`http://localhost:5001/api/matches/${selectedMatch.matchId}/end-innings`, {
+        method: 'POST'
+      });
+      
+      if (response.ok) {
+        const updatedMatch = await response.json();
+        setSelectedMatch(updatedMatch);
+        fetchMatches();
+        toast({
+          title: "Innings Ended",
+          description: `${battingTeam}'s innings has been completed. ${updatedMatch.status === 'completed' ? 'Match finished!' : 'Next innings started.'}`
+        });
+      } else {
+        throw new Error('Failed to end innings');
+      }
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to end innings",
         variant: "destructive"
       });
     } finally {
@@ -301,7 +500,7 @@ const LiveScoringAdmin: React.FC = () => {
     return ball.runs.toString();
   };
 
-  const teams = ['AGNI', 'JAL', 'VAYU', 'AAKASH'];
+  const teams = ['THUNDER STRIKERS', 'ROYAL LIONS', 'EAGLES UNITED', 'WARRIORS XI', 'TITANS CHAMPION'];
   const wicketTypes = ['bowled', 'caught', 'lbw', 'run_out', 'stumped', 'hit_wicket'];
 
   return (
@@ -455,7 +654,7 @@ const LiveScoringAdmin: React.FC = () => {
                         }>
                           {match.status.toUpperCase()}
                         </Badge>
-                        {match.status === 'upcoming' && (
+                        {(match.status === 'upcoming' || match.status === 'scheduled') && (
                           <Button size="sm" onClick={(e) => {
                             e.stopPropagation();
                             startMatch(match.matchId);
@@ -464,6 +663,18 @@ const LiveScoringAdmin: React.FC = () => {
                             Start
                           </Button>
                         )}
+                        <Button 
+                          size="sm" 
+                          variant="ghost"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            deleteMatch(match._id);
+                          }} 
+                          disabled={loading}
+                          className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
                       </div>
                     </div>
                   </div>
@@ -809,13 +1020,13 @@ const LiveScoringAdmin: React.FC = () => {
                                 )}
                               </td>
                               <td className="text-center p-2">{bowler.overs}</td>
-                              <td className="text-center p-2">{bowler.maidens}</td>
+                              <td className="text-center p-2">{bowler.maidens || 0}</td>
                               <td className="text-center p-2">{bowler.runs}</td>
                               <td className="text-center p-2 font-bold text-red-600">{bowler.wickets}</td>
                               <td className="text-center p-2">{bowler.economy}</td>
                               <td className="text-center p-2">
                                 <div className="text-xs text-gray-600">
-                                  W:{bowler.wides} NB:{bowler.noBalls}
+                                  W:{bowler.wides || 0} NB:{bowler.noBalls || 0}
                                 </div>
                               </td>
                             </tr>
@@ -843,30 +1054,55 @@ const LiveScoringAdmin: React.FC = () => {
                   {/* Player Information */}
                   <div className="grid grid-cols-3 gap-4">
                     <div>
-                      <label className="block text-sm font-medium mb-1">Striker *</label>
-                      <Input
-                        value={striker}
-                        onChange={(e) => setStriker(e.target.value)}
-                        placeholder="Striker name"
-                        className="font-medium"
-                      />
+                      <label className="block text-sm font-medium mb-1">
+                        Striker * <span className="text-xs text-gray-500">({getCurrentInnings()?.battingTeam})</span>
+                      </label>
+                      <Select value={striker} onValueChange={setStriker}>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Select striker" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {battingTeamPlayers.map(player => (
+                            <SelectItem key={player} value={player}>
+                              {player}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
                     </div>
                     <div>
-                      <label className="block text-sm font-medium mb-1">Non-Striker</label>
-                      <Input
-                        value={nonStriker}
-                        onChange={(e) => setNonStriker(e.target.value)}
-                        placeholder="Non-striker name"
-                      />
+                      <label className="block text-sm font-medium mb-1">
+                        Non-Striker <span className="text-xs text-gray-500">({getCurrentInnings()?.battingTeam})</span>
+                      </label>
+                      <Select value={nonStriker} onValueChange={setNonStriker}>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Select non-striker" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {battingTeamPlayers.map(player => (
+                            <SelectItem key={player} value={player}>
+                              {player}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
                     </div>
                     <div>
-                      <label className="block text-sm font-medium mb-1">Bowler *</label>
-                      <Input
-                        value={bowler}
-                        onChange={(e) => setBowler(e.target.value)}
-                        placeholder="Bowler name"
-                        className="font-medium"
-                      />
+                      <label className="block text-sm font-medium mb-1">
+                        Bowler * <span className="text-xs text-gray-500">({getCurrentInnings()?.bowlingTeam})</span>
+                      </label>
+                      <Select value={bowler} onValueChange={setBowler}>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Select bowler" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {bowlingTeamPlayers.map(player => (
+                            <SelectItem key={player} value={player}>
+                              {player}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
                     </div>
                   </div>
 
@@ -1000,6 +1236,17 @@ const LiveScoringAdmin: React.FC = () => {
                       <RotateCcw className="h-4 w-4" />
                     </Button>
                   </div>
+
+                  {/* End Innings Button */}
+                  <Button 
+                    onClick={endInnings} 
+                    disabled={loading}
+                    variant="destructive"
+                    className="w-full h-12 text-lg font-semibold"
+                  >
+                    <Pause className="h-5 w-5 mr-2" />
+                    End Current Innings
+                  </Button>
 
                   {/* Ball Summary */}
                   <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">

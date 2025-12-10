@@ -3,8 +3,7 @@ import mongoose from 'mongoose';
 const PlayerSchema = new mongoose.Schema({
   name: { type: String, required: true },
   team: { 
-    type: String, 
-    enum: ['AGNI-A', 'AGNI-B', 'AAKASH-A', 'AAKASH-B', 'VAYU-A', 'VAYU-B', 'JAL-A', 'JAL-B', 'PRUDHVI-A', 'PRUDHVI-B'],
+    type: String,
     required: true 
   },
   matches: { type: Number, default: 0 },
@@ -24,8 +23,7 @@ const PlayerSchema = new mongoose.Schema({
   battingStyle: String,
   bowlingStyle: String,
   description: String,
-  photoUrl: String,
-  pinno: { type: String, required: true, unique: true }
+  photoUrl: String
 }, {
   timestamps: true
 });

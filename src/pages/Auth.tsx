@@ -7,31 +7,41 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/hooks/use-toast";
 import { motion } from "framer-motion";
-import { getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword } from "firebase/auth";
+import axios from "axios";
 
 const Auth = () => {
   const [loading, setLoading] = useState(false);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [username, setUsername] = useState("");
   const navigate = useNavigate();
   const { toast } = useToast();
-  const auth = getAuth();
+  const API_URL = import.meta.env.VITE_API_BASE_URL || "http://localhost:5001/api";
 
   const handleSignIn = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
 
     try {
-      await signInWithEmailAndPassword(auth, email, password);
-      toast({
-        title: "Success",
-        description: "Successfully signed in!",
+      const response = await axios.post(`${API_URL}/auth/login`, {
+        username: email,
+        password
       });
-      navigate("/");
+      
+      if (response.data.token) {
+        localStorage.setItem("token", response.data.token);
+        localStorage.setItem("user", JSON.stringify(response.data.user));
+        
+        toast({
+          title: "Success",
+          description: "Successfully signed in!",
+        });
+        navigate("/");
+      }
     } catch (error: any) {
       toast({
         title: "Error",
-        description: error.message,
+        description: error.response?.data?.message || "Failed to sign in",
         variant: "destructive",
       });
     } finally {
@@ -44,15 +54,24 @@ const Auth = () => {
     setLoading(true);
 
     try {
-      await createUserWithEmailAndPassword(auth, email, password);
+      const response = await axios.post(`${API_URL}/auth/register`, {
+        username,
+        email,
+        password
+      });
+      
       toast({
         title: "Success",
-        description: "Account created successfully!",
+        description: "Account created successfully! Please sign in.",
       });
+      
+      setUsername("");
+      setEmail("");
+      setPassword("");
     } catch (error: any) {
       toast({
         title: "Error",
-        description: error.message,
+        description: error.response?.data?.message || "Failed to create account",
         variant: "destructive",
       });
     } finally {
@@ -69,7 +88,7 @@ const Auth = () => {
     >
       <Card className="w-full max-w-md mx-4 cricket-shadow">
         <CardHeader>
-          <CardTitle className="text-center text-2xl">Cricket Platform</CardTitle>
+          <CardTitle className="text-center text-2xl">Cricket Championship</CardTitle>
         </CardHeader>
         <CardContent>
           <Tabs defaultValue="signin" className="w-full">
@@ -81,19 +100,19 @@ const Auth = () => {
             <TabsContent value="signin">
               <form onSubmit={handleSignIn} className="space-y-4">
                 <div className="space-y-2">
-                  <Label htmlFor="email">Email</Label>
+                  <Label htmlFor="signin-email">Email/Username</Label>
                   <Input
-                    id="email"
-                    type="email"
+                    id="signin-email"
+                    type="text"
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
                     required
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="password">Password</Label>
+                  <Label htmlFor="signin-password">Password</Label>
                   <Input
-                    id="password"
+                    id="signin-password"
                     type="password"
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
@@ -109,9 +128,19 @@ const Auth = () => {
             <TabsContent value="signup">
               <form onSubmit={handleSignUp} className="space-y-4">
                 <div className="space-y-2">
-                  <Label htmlFor="email">Email</Label>
+                  <Label htmlFor="signup-username">Username</Label>
                   <Input
-                    id="email"
+                    id="signup-username"
+                    type="text"
+                    value={username}
+                    onChange={(e) => setUsername(e.target.value)}
+                    required
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="signup-email">Email</Label>
+                  <Input
+                    id="signup-email"
                     type="email"
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
@@ -119,9 +148,9 @@ const Auth = () => {
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="password">Password</Label>
+                  <Label htmlFor="signup-password">Password</Label>
                   <Input
-                    id="password"
+                    id="signup-password"
                     type="password"
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}

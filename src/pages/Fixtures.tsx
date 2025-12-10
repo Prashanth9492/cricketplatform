@@ -13,12 +13,18 @@ interface Match {
   _id: string;
   team1: string;
   team2: string;
-  date: string;
+  matchDate: string;
   venue: string;
   type: string;
+  matchType?: string;
   status: string;
   team1Logo: string;
   team2Logo: string;
+  result?: {
+    winner?: string;
+    winBy?: string;
+    playerOfMatch?: string;
+  };
 }
 
 const Fixtures = () => {
@@ -34,9 +40,10 @@ const Fixtures = () => {
       try {
         const res = await fetch("http://localhost:5001/api/matches");
         const data = await res.json();
+        console.log("Fetched matches:", data);
         setMatches(data);
       } catch (error) {
-       // console.error("Failed to fetch matches:", error);
+        console.error("Failed to fetch matches:", error);
       } finally {
         setLoading(false);
       }
@@ -45,7 +52,7 @@ const Fixtures = () => {
   }, []);
 
   useEffect(() => {
-   // console.log("Matches data:", matches);
+    console.log("Matches data:", matches);
   }, [matches]);
 
   // Animation variants
@@ -142,17 +149,32 @@ const Fixtures = () => {
                     </div>
                     {/* Status/Result */}
                     <div className="flex flex-col items-center min-w-[120px]">
-                      {match.status === "Completed" ? (
-                        <span className="flex items-center gap-1 text-green-600 text-sm font-semibold"><Trophy className="w-4 h-4" />Completed</span>
+                      {match.status === "completed" ? (
+                        <>
+                          <span className="flex items-center gap-1 text-green-600 text-sm font-semibold">
+                            <Trophy className="w-4 h-4" />
+                            Completed
+                          </span>
+                          {match.result?.winner && (
+                            <span className="text-xs font-semibold text-green-700 mt-1">
+                              {match.result.winner === 'tie' ? '🤝 Tie' : 
+                               match.result.winner === 'no_result' ? 'No Result' : 
+                               `🏆 ${match.result.winner} won`}
+                            </span>
+                          )}
+                        </>
                       ) : match.status.toLowerCase().includes("semi") ? (
                         <span className="flex items-center gap-1 text-yellow-600 text-sm font-semibold">Semi Final</span>
                       ) : match.status.toLowerCase().includes("final") ? (
                         <span className="flex items-center gap-1 text-blue-600 text-sm font-semibold">Final</span>
                       ) : (
-                        <span className="flex items-center gap-1 text-red-600 text-sm font-semibold"><span className="w-2 h-2 bg-red-500 rounded-full inline-block" />{match.status}</span>
+                        <span className="flex items-center gap-1 text-red-600 text-sm font-semibold">
+                          <span className="w-2 h-2 bg-red-500 rounded-full inline-block" />
+                          {match.status}
+                        </span>
                       )}
-                      <span className="text-xs text-gray-400">{match.type}, {match.venue}</span>
-                      <span className="text-xs text-gray-400">{new Date(match.date).toLocaleString()}</span>
+                      <span className="text-xs text-gray-400">{match.matchType || match.type}, {match.venue}</span>
+                      <span className="text-xs text-gray-400">{new Date(match.matchDate).toLocaleString()}</span>
                     </div>
                     {/* Team 2 */}
                     <div className="flex items-center gap-2 min-w-[120px] justify-end">

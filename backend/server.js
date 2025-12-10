@@ -33,15 +33,20 @@ export const io = new Server(server, {
 
 // Socket.IO connection handling
 io.on('connection', (socket) => {
-  console.log('Client connected:', socket.id);
+  console.log('✅ Client connected:', socket.id);
   
   socket.on('joinMatch', (matchId) => {
     socket.join(`match_${matchId}`);
-    console.log(`Client ${socket.id} joined match ${matchId}`);
+    console.log(`📡 Client ${socket.id} joined match room: match_${matchId}`);
+  });
+  
+  socket.on('leaveMatch', (matchId) => {
+    socket.leave(`match_${matchId}`);
+    console.log(`📡 Client ${socket.id} left match room: match_${matchId}`);
   });
   
   socket.on('disconnect', () => {
-    console.log('Client disconnected:', socket.id);
+    console.log('❌ Client disconnected:', socket.id);
   });
 });
 

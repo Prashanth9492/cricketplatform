@@ -1,4 +1,4 @@
-# College Tennis Championship
+# Cricket Championship
 
 ## Project info
 
@@ -6,31 +6,32 @@
 
 ## About
 
-This is a comprehensive tennis tournament management system for college tennis championships. The application includes:
+This is a comprehensive cricket tournament management system for cricket championships. The application includes:
 
-- **Player Management**: Track player statistics, rankings, and performance across different tennis categories
-- **Tournament Management**: Organize tournaments for Men's/Women's Singles, Doubles, and Mixed Doubles
-- **Live Match Scoring**: Real-time match updates with point-by-point scoring
-- **Rankings System**: Dynamic player rankings based on tournament performance
-- **Match Statistics**: Detailed analytics including aces, winners, errors, and match history
+- **Player Management**: Track player statistics, batting and bowling performance across teams
+- **Team Management**: Organize teams and manage rosters
+- **Live Match Scoring**: Real-time match updates with ball-by-ball commentary
+- **Points Table**: Dynamic team standings based on match results
+- **Match Statistics**: Detailed analytics including runs, wickets, strike rates, and match history
 - **Gallery & News**: Tournament photos and news updates
 
-## Tennis Categories
+## Teams
 
-- Men's Singles
-- Women's Singles  
-- Men's Doubles
-- Women's Doubles
-- Mixed Doubles
+- Thunder Strikers
+- Royal Lions
+- Eagles United
+- Warriors XI
+- Titans Champion
 
 ## Features
 
 - Real-time live scoring with Socket.IO
 - Responsive design for mobile and desktop
 - Player statistics and performance tracking
-- Tournament bracket management
+- Match fixture management
 - Administrative dashboard for tournament management
 - Photo gallery for tournament highlights
+- Points table with team rankings
 
 ## How can I edit this code?
 

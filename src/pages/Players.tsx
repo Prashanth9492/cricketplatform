@@ -103,53 +103,28 @@ const Players = () => {
 
   const getTeamColor = (team: string) => {
     if (!team) return '#666';
-    const houseName = team.split('-')[0];
-    const teamColors = {
-      'AGNI': '#FF4444',
-      'AAKASH': '#4444FF',
-      'VAYU': '#44FF44',
-      'JAL': '#f18f20ff',
-      'PRUDHVI': '#FF44FF'
+    const teamColors: { [key: string]: string } = {
+      'THUNDER STRIKERS': '#FF4444',
+      'ROYAL LIONS': '#4444FF',
+      'EAGLES UNITED': '#44FF44',
+      'WARRIORS XI': '#f18f20ff',
+      'TITANS CHAMPION': '#FF44FF'
     };
-    return teamColors[houseName.toUpperCase() as keyof typeof teamColors] || '#666';
+    return teamColors[team.toUpperCase()] || '#666';
   };
 
   // Get unique teams for filter dropdown
   const getUniqueTeams = () => {
     const existingTeams = Array.from(new Set(players.map(player => player.team).filter(Boolean)));
     
-    // Define all houses and ensure each has A and B teams
-    const houses = ['AAKASH', 'AGNI', 'JAL', 'PRUDHVI', 'VAYU'];
-    const allExpectedTeams: string[] = [];
+    // Define all teams
+    const allTeams = ['THUNDER STRIKERS', 'ROYAL LIONS', 'EAGLES UNITED', 'WARRIORS XI', 'TITANS CHAMPION'];
     
-    houses.forEach(house => {
-      allExpectedTeams.push(`${house}-A`, `${house}-B`);
-    });
+    // Combine existing teams with all teams and remove duplicates
+    const combinedTeams = Array.from(new Set([...existingTeams, ...allTeams]));
     
-    // Filter existing teams to only include those that match HOUSE-A or HOUSE-B pattern
-    const validExistingTeams = existingTeams.filter(team => {
-      const parts = team.split('-');
-      return parts.length === 2 && houses.includes(parts[0]) && ['A', 'B'].includes(parts[1]);
-    });
-    
-    // Combine valid existing teams with expected teams and remove duplicates
-    const combinedTeams = Array.from(new Set([...validExistingTeams, ...allExpectedTeams]));
-    
-    // Sort teams by house first, then by variant
-    return combinedTeams.sort((a, b) => {
-      const houseA = a.split('-')[0];
-      const houseB = b.split('-')[0];
-      const variantA = a.split('-')[1] || '';
-      const variantB = b.split('-')[1] || '';
-      
-      // First sort by house
-      if (houseA !== houseB) {
-        return houseA.localeCompare(houseB);
-      }
-      
-      // Then sort by variant (A, B, etc.)
-      return variantA.localeCompare(variantB);
-    });
+    // Sort teams alphabetically
+    return combinedTeams.sort((a, b) => a.localeCompare(b));
   };
 
   return (

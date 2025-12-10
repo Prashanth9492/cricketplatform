@@ -63,6 +63,12 @@ router.post('/:matchId/start', async (req, res) => {
       return res.status(404).json({ message: 'Match not found' });
     }
 
+    if (!match.tossWinner || !match.tossDecision) {
+      return res.status(400).json({ 
+        message: 'Cannot start match: Toss winner and decision must be set. Please update match details first.' 
+      });
+    }
+
     match.status = 'live';
     match.isLive = true;
     
@@ -78,8 +84,16 @@ router.post('/:matchId/start', async (req, res) => {
       currentBall: 0,
       extras: { wides: 0, noBalls: 0, byes: 0, legByes: 0 }
     });
+    
+    match.currentInnings = 1;
 
     await match.save();
+    
+    console.log('✅ Match started successfully:', {
+      matchId: match.matchId,
+      battingTeam: match.innings[0].battingTeam,
+      bowlingTeam: match.innings[0].bowlingTeam
+    });
     
     // Emit to all connected clients
     if (io) {
@@ -92,17 +106,142 @@ router.post('/:matchId/start', async (req, res) => {
   }
 });
 
+// End current innings
+router.post('/:matchId/end-innings', async (req, res) => {
+  console.log('🔔 End innings endpoint hit! Match ID:', req.params.matchId);
+  try {
+    const match = await Match.findOne({ matchId: req.params.matchId });
+    if (!match) {
+      console.log('❌ Match not found:', req.params.matchId);
+      return res.status(404).json({ message: 'Match not found' });
+    }
+
+    if (match.status !== 'live') {
+      return res.status(400).json({ message: 'Match is not live' });
+    }
+
+    const currentInnings = match.innings[match.currentInnings - 1];
+    if (!currentInnings) {
+      return res.status(400).json({ message: 'No current innings found' });
+    }
+
+    // Mark current innings as completed
+    currentInnings.isCompleted = true;
+
+    if (match.currentInnings === 1) {
+      // Start second innings
+      match.currentInnings = 2;
+      match.innings.push({
+        inningsNumber: 2,
+        battingTeam: currentInnings.bowlingTeam,
+        bowlingTeam: currentInnings.battingTeam,
+        runs: 0,
+        wickets: 0,
+        overs: [],
+        currentOver: 0,
+        currentBall: 0,
+        extras: { wides: 0, noBalls: 0, byes: 0, legByes: 0 }
+      });
+
+      await match.save();
+
+      console.log('✅ Innings ended, second innings started:', {
+        matchId: match.matchId,
+        newBattingTeam: match.innings[1].battingTeam,
+        target: currentInnings.runs + 1
+      });
+
+      // Emit innings change event
+      if (io) {
+        io.emit('inningsChanged', {
+          matchId: match.matchId,
+          match: match,
+          newInnings: 2,
+          battingTeam: match.innings[1].battingTeam
+        });
+      }
+
+      res.json(match);
+    } else {
+      // Match completed
+      match.status = 'completed';
+      match.isLive = false;
+
+      // Initialize result object if it doesn't exist
+      if (!match.result) {
+        match.result = {};
+      }
+
+      // Determine winner
+      const firstInnings = match.innings[0];
+      const secondInnings = match.innings[1];
+
+      if (secondInnings.runs > firstInnings.runs) {
+        match.result.winner = secondInnings.battingTeam;
+        match.result.winBy = `${10 - secondInnings.wickets} wickets`;
+      } else if (firstInnings.runs > secondInnings.runs) {
+        match.result.winner = firstInnings.battingTeam;
+        match.result.winBy = `${firstInnings.runs - secondInnings.runs} runs`;
+      } else {
+        match.result.winner = 'tie';
+        match.result.winBy = 'Match tied';
+      }
+
+      await match.save();
+
+      console.log('🏆 Match completed:', {
+        matchId: match.matchId,
+        winner: match.result.winner,
+        winBy: match.result.winBy
+      });
+
+      // Emit match ended event
+      if (io) {
+        io.emit('matchEnded', {
+          matchId: match.matchId,
+          match: match,
+          winner: match.result.winner,
+          winBy: match.result.winBy
+        });
+      }
+
+      res.json(match);
+    }
+  } catch (error) {
+    console.error('❌ Error ending innings:', error);
+    res.status(400).json({ message: error.message });
+  }
+});
+
 // Add ball to match
 router.post('/:matchId/ball', async (req, res) => {
   try {
     const { runs, isWicket, isWide, isNoBall, isBye, isLegBye, striker, nonStriker, bowler, wicketType, fielder } = req.body;
     
+    console.log('📥 Received ball data:', { runs, isWicket, isWide, isNoBall, isBye, isLegBye, striker, nonStriker, bowler, wicketType, fielder });
+    
     const match = await Match.findOne({ matchId: req.params.matchId });
-    if (!match || match.status !== 'live') {
-      return res.status(404).json({ message: 'Live match not found' });
+    if (!match) {
+      console.error('❌ Match not found:', req.params.matchId);
+      return res.status(404).json({ message: 'Match not found' });
+    }
+    
+    if (match.status !== 'live') {
+      console.error('❌ Match not live:', match.status);
+      return res.status(400).json({ message: 'Match is not live. Please start the match first.' });
+    }
+    
+    if (!match.innings || match.innings.length === 0) {
+      console.error('❌ No innings found. Match innings:', match.innings);
+      console.error('❌ Match status:', match.status, 'currentInnings:', match.currentInnings);
+      return res.status(400).json({ message: 'No innings found. Match may not be properly started.' });
     }
 
     const currentInnings = match.innings[match.currentInnings - 1];
+    if (!currentInnings) {
+      return res.status(400).json({ message: 'Current innings not found.' });
+    }
+    
     const currentOverIndex = currentInnings.overs.length - 1;
     
     // Create new over if needed
@@ -120,6 +259,11 @@ router.post('/:matchId/ball', async (req, res) => {
     }
 
     const currentOver = currentInnings.overs[currentInnings.overs.length - 1];
+    
+    // Update current batsmen in innings
+    currentInnings.striker = striker;
+    currentInnings.nonStriker = nonStriker;
+    currentInnings.bowler = bowler;
     
     // Create ball
     const ball = {
@@ -298,10 +442,31 @@ router.post('/:matchId/ball', async (req, res) => {
           match.result.winner = 'tie';
           match.result.winBy = 'Match tied';
         }
+        
+        // Emit match ended event
+        if (io) {
+          io.emit('matchEnded', {
+            matchId: match.matchId,
+            match: match,
+            winner: match.result.winner,
+            winBy: match.result.winBy
+          });
+          console.log('🏆 Match ended event emitted:', match.matchId);
+        }
       }
     }
 
     await match.save();
+    
+    console.log('✅ Ball saved successfully. Updated match:', {
+      matchId: match.matchId,
+      innings: match.currentInnings,
+      score: `${currentInnings.runs}/${currentInnings.wickets}`,
+      overs: `${currentInnings.currentOver}.${currentInnings.currentBall}`,
+      striker: currentInnings.striker,
+      nonStriker: currentInnings.nonStriker,
+      batsmanStats: match.batsmanStats.map(b => `${b.playerName}: ${b.runs}(${b.ballsFaced})`)
+    });
     
     // Emit real-time update
     if (io) {
@@ -311,6 +476,7 @@ router.post('/:matchId/ball', async (req, res) => {
         ball: ball,
         commentary: commentaryText
       });
+      console.log('📡 WebSocket event emitted: ballUpdate');
     }
     
     res.json({ match, ball });
@@ -331,6 +497,16 @@ router.put('/:matchId', async (req, res) => {
     if (!match) {
       return res.status(404).json({ message: 'Match not found' });
     }
+    
+    // Emit score update to all connected clients
+    if (io) {
+      io.emit('scoreUpdate', {
+        matchId: match.matchId,
+        match: match
+      });
+      console.log('📡 Score update emitted for match:', match.matchId);
+    }
+    
     res.json(match);
   } catch (error) {
     res.status(400).json({ message: error.message });

@@ -78,8 +78,8 @@ export function AppSidebar() {
             <Trophy className="h-8 w-8 text-yellow-500" />
             {!collapsed && (
               <div>
-              <h2 className="text-lg font-bold text-sidebar-foreground">CSD - CSIT</h2>
-              <p className="text-xs text-sidebar-foreground/70">College Cricket Platform</p>
+              <h2 className="text-lg font-bold text-sidebar-foreground">Cricket Hub</h2>
+              <p className="text-xs text-sidebar-foreground/70">Live Scores & Updates</p>
               </div>
             )}
             </div>

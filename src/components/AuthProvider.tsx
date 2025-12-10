@@ -30,12 +30,16 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
   useEffect(() => {
     // On mount, check localStorage for token/role
-    const token = localStorage.getItem('token');
-    const username = localStorage.getItem('username');
-    const userRole = localStorage.getItem('role');
-    if (token && username && userRole) {
-      setUser(username);
-      setRole(userRole);
+    try {
+      const token = localStorage.getItem('token');
+      const username = localStorage.getItem('username');
+      const userRole = localStorage.getItem('role');
+      if (token && username && userRole) {
+        setUser(username);
+        setRole(userRole);
+      }
+    } catch (error) {
+      console.warn('localStorage not available:', error);
     }
     setLoading(false);
   }, []);

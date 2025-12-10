@@ -7,10 +7,11 @@ import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { Layout } from "@/components/Layout";
 import { AuthProvider } from "@/components/AuthProvider";
 import { ProtectedRoute } from "@/components/ProtectedRoute";
+import { NativePiPScores } from "@/components/NativePiPScores";
 import Index from "./pages/Index";
 import Teams from "./pages/Teams";
 import Players from "./pages/Players";
-// import LiveScores from "./pages/LiveScores";
+import LiveScores from "./pages/LiveScores";
 import Fixtures from "./pages/Fixtures";
 import Statistics from "./pages/Statistics";
 import PointsTable from "./pages/PointsTable";
@@ -19,7 +20,6 @@ import Gallery from "./pages/Gallery";
 import Admin from "./pages/Admin";
 import Dashboard from "./pages/Dashboard";
 import NotFound from "./pages/NotFound";
-import FirebaseLogin from "./pages/FirebaseLogin";
 import TestAPI from "./pages/TestAPI";
 
 const queryClient = new QueryClient();
@@ -31,12 +31,14 @@ const App = () => (
         <Toaster />
         <Sonner />
         <BrowserRouter>
+          {/* Native Picture-in-Picture Live Scores - Floats on all apps */}
+          <NativePiPScores />
           <Layout>
             <Routes>
               <Route path="/" element={<Index />} />
               <Route path="/teams" element={<Teams />} />
               <Route path="/players" element={<Players />} />
-              {/* <Route path="/live-scores" element={<LiveScores />} /> */}
+              <Route path="/live-scores" element={<LiveScores />} />
               <Route path="/fixtures" element={<Fixtures />} />
               <Route path="/stats" element={<Statistics />} />
               <Route path="/points-table" element={<PointsTable />} />
@@ -44,7 +46,6 @@ const App = () => (
               <Route path="/gallery" element={<Gallery />} />
               <Route path="/test-api" element={<TestAPI />} />
               <Route path="/admindashboard" element={<Admin />} />
-              <Route path="/firebase-login" element={<FirebaseLogin />} />
 
               <Route path="/admin" element={
                 <ProtectedRoute adminOnly redirectTo="/auth">

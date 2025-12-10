@@ -1,895 +1,855 @@
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-  import { Badge } from "@/components/ui/badge";
-  import { Button } from "@/components/ui/button";
-  import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-  import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-  import { Trophy, Users, Star, TrendingUp, ArrowLeft, Calendar, Clock, MapPin, X } from "lucide-react";
-  import { motion } from "framer-motion";
-  import { useState, useEffect } from "react";
-  import { useNavigate } from "react-router-dom";
-  import axios from "axios";
-  import aakash from "@/assets/aakash.png";
-  import srkr from "@/assets/srkrec-logo.png";
-  import agni from "@/assets/agni.jpg";
-  
-import prudhvi from "@/assets/prudhvi.jpg";
-import vayu from "@/assets/vayu.jpg";
-import jal from "@/assets/jal.jpg";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Trophy, Users, Star, TrendingUp, ArrowLeft, Calendar, Clock, MapPin, X, Zap, Shield, Award, ChevronRight, Target, UserCheck, Home, Globe, Circle, PieChart, PlayCircle, Settings } from "lucide-react";
+import { motion } from "framer-motion";
+import { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
+import axios from "axios";
 
-  // Player interface - matching the backend Player model
-  interface Player {
-    _id: string;
-    name: string;
-    position?: string;
-    team: string;
-    age?: string;
-    battingStyle?: string;
-    bowlingStyle?: string;
-    description?: string;
-    photoUrl?: string;
-    matches: number;
-    innings: number;
-    runs: number;
-    highest_score: number;
-    hundreds: number;
-    fifties: number;
-    fours: number;
-    sixes: number;
-    balls_faced: number;
-    outs: number;
-    average?: number;
-    strike_rate?: number;
-    pinno: string;
+// Player interface - matching the backend Player model
+interface Player {
+  _id: string;
+  name: string;
+  position?: string;
+  team: string;
+  age?: string;
+  battingStyle?: string;
+  bowlingStyle?: string;
+  description?: string;
+  photoUrl?: string;
+  matches: number;
+  innings: number;
+  runs: number;
+  highest_score: number;
+  hundreds: number;
+  fifties: number;
+  fours: number;
+  sixes: number;
+  balls_faced: number;
+  outs: number;
+  average?: number;
+  strike_rate?: number;
+  pinno: string;
+}
+
+// Cricket teams data with icon-based logos
+const teams = [
+  {
+    id: "1",
+    name: "THUNDER STRIKERS",
+    shortName: "TS",
+    icon: Zap,
+    iconColor: "#FF4444",
+    bgColor: "#FF444420",
+    captain: "Arun Sharma",
+    home_ground: "Thunder Stadium",
+    founded: 2010,
+    description: "Thunder Strikers dominate with explosive batting and strategic gameplay.",
+    stats: {
+      matches: 42,
+      wins: 28,
+      losses: 14
+    }
+  },
+  {
+    id: "2",
+    name: "ROYAL LIONS",
+    shortName: "RL",
+    icon: Award,
+    iconColor: "#4444FF",
+    bgColor: "#4444FF20",
+    captain: "Vikram Singh",
+    home_ground: "Lions Arena",
+    founded: 2012,
+    description: "Royal Lions reign supreme with powerful all-rounders and fierce competition.",
+    stats: {
+      matches: 45,
+      wins: 30,
+      losses: 15
+    }
+  },
+  {
+    id: "3",
+    name: "EAGLES UNITED",
+    shortName: "EU",
+    icon: TrendingUp,
+    iconColor: "#44FF44",
+    bgColor: "#44FF4420",
+    captain: "Rahul Verma",
+    home_ground: "Eagles Park",
+    founded: 2008,
+    description: "Eagles United soar high with exceptional bowling and swift fielding.",
+    stats: {
+      matches: 50,
+      wins: 32,
+      losses: 18
+    }
+  },
+  {
+    id: "4",
+    name: "WARRIORS XI",
+    shortName: "WXI",
+    icon: Shield,
+    iconColor: "#f18f20ff",
+    bgColor: "#f18f2020",
+    captain: "Sameer Patel",
+    home_ground: "Warriors Ground",
+    founded: 2015,
+    description: "Warriors XI fight with determination and consistent performance.",
+    stats: {
+      matches: 38,
+      wins: 22,
+      losses: 16
+    }
+  },
+  {
+    id: "5",
+    name: "TITANS CHAMPION",
+    shortName: "TC",
+    icon: Trophy,
+    iconColor: "#FF44FF",
+    bgColor: "#FF44FF20",
+    captain: "Kiran Reddy",
+    home_ground: "Titans Oval",
+    founded: 2005,
+    description: "Titans Champion stand tall with solid defense and match-winning knocks.",
+    stats: {
+      matches: 55,
+      wins: 38,
+      losses: 17
+    }
+  },
+];
+
+// Animation variants
+const fadeIn = {
+  hidden: { opacity: 0 },
+  visible: { opacity: 1 }
+};
+
+const scaleUp = {
+  hidden: { scale: 0.8, opacity: 0 },
+  visible: { scale: 1, opacity: 1 }
+};
+
+const slideIn = {
+  hidden: { x: -100, opacity: 0 },
+  visible: { x: 0, opacity: 1 }
+};
+
+export default function Teams() {
+  const navigate = useNavigate();
+  const [selectedTeam, setSelectedTeam] = useState(null);
+  const [matches, setMatches] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+  const [lastUpdated, setLastUpdated] = useState(null);
+  const [players, setPlayers] = useState<Player[]>([]);
+  const [teamPlayers, setTeamPlayers] = useState<Player[]>([]);
+  const [activeTab, setActiveTab] = useState("circular");
+
+  // Function to fetch all players
+  const fetchPlayers = async () => {
+    try {
+      const response = await axios.get(`${import.meta.env.VITE_API_BASE_URL}/players`);
+      setPlayers(response.data);
+    } catch (err) {
+      console.error('Error fetching players:', err);
+      setPlayers([]);
+    }
+  };
+
+  // Function to fetch team-specific players
+  const fetchTeamPlayers = async (teamName: string) => {
+    try {
+      const response = await axios.get(`${import.meta.env.VITE_API_BASE_URL}/players?team=${encodeURIComponent(teamName)}`);
+      setTeamPlayers(response.data);
+    } catch (err) {
+      console.error('Error fetching team players:', err);
+      setTeamPlayers([]);
+    }
+  };
+
+  // Function to fetch matches
+  const fetchMatches = async () => {
+    try {
+      const apiUrl = `${import.meta.env.VITE_API_BASE_URL}/matches`;
+      const response = await fetch(apiUrl);
+      if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+      const data = await response.json();
+      setMatches(data);
+      setError(null);
+      setLastUpdated(new Date());
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchMatches();
+    fetchPlayers();
+  }, []);
+
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      if (!document.hidden) fetchMatches();
+    };
+    const handleFocus = () => fetchMatches();
+    const interval = setInterval(() => fetchMatches(), 30000);
+
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    window.addEventListener('focus', handleFocus);
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+      window.removeEventListener('focus', handleFocus);
+      clearInterval(interval);
+    };
+  }, []);
+
+  const getTeamMatches = (teamName) => {
+    const normalized = teamName.toLowerCase();
+    return matches.filter(match =>
+      match.team1.toLowerCase().startsWith(normalized) ||
+      match.team2.toLowerCase().startsWith(normalized)
+    );
+  };
+
+  const showDetails = (teamId) => {
+    const team = teams.find((team) => team.id === teamId);
+    const teamMatches = matches.filter(match => 
+      match.team1 === team.name || match.team2 === team.name
+    );
+    const upcomingMatches = teamMatches.filter(match => 
+      match.status === 'upcoming' || match.status === 'scheduled'
+    );
+    const completedMatches = teamMatches.filter(match => 
+      match.status === 'completed' || match.status === 'finished'
+    );
+    const pastMatches = completedMatches.map(match => ({
+      opponent: match.team1 === team.name ? match.team2 : match.team1,
+      venue: match.venue,
+      date: match.date,
+      status: match.status,
+      type: match.type
+    }));
+    
+    setSelectedTeam({
+      ...team,
+      pastMatches,
+      upcomingMatches,
+      totalMatches: teamMatches.length
+    });
+    
+    // Fetch players for this team
+    fetchTeamPlayers(team.name);
+  };
+
+  const hideDetails = () => {
+    setSelectedTeam(null);
+  };
+
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-gray-50 to-gray-100 dark:from-gray-900 dark:to-gray-800">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-16 w-16 border-t-2 border-b-2 border-primary mx-auto mb-4"></div>
+          <p className="text-gray-600 dark:text-gray-300">Loading teams and matches...</p>
+        </div>
+      </div>
+    );
   }
 
-  // Mock data for the 5 teams (without past matches)
-  const teams = [
-    {
-      id: "1",
-      name: "AGNI",
-      logo: agni,
-      captain: "Arun Sharma",
-      home_ground: "Fire Stadium",
-      founded: 2010,
-      description: "AGNI brings fiery passion to the cricket field with aggressive batting.",
-    },
-    {
-      id: "2",
-      name: "AAKASH",
-      logo: aakash,
-      captain: "Vikram Singh",
-      home_ground: "Sky Arena",
-      founded: 2012,
-      description: "AAKASH soars high with strategic gameplay and swift fielding.",
-    },
-    {
-      id: "3",
-      name: "VAYU",
-      logo: vayu,
-      captain: "Rahul Verma",
-      home_ground: "Wind Park",
-      founded: 2008,
-      description: "VAYU moves like the wind, with fast bowlers dominating the pitch.",
-    },
-    {
-      id: "4",
-      name: "JAL",
-      logo: jal,
-      captain: "Sameer Patel",
-      home_ground: "Waterfront Ground",
-      founded: 2015,
-      description: "JAL flows smoothly with consistent all-round performance.",
-    },
-    {
-      id: "5",
-      name: "PRUDHVI",
-      logo: prudhvi,
-      captain: "Kiran Reddy",
-      home_ground: "Earth Oval",
-      founded: 2005,
-      description: "PRUDHVI stands firm with solid defense and powerful batting.",
-    },
-  ];
-
-  // Animation variants for card landing effect
-  const cardVariants = {
-    hidden: { opacity: 0, y: 50 },
-    visible: { opacity: 1, y: 0 },
-  };
-
-  // Animation variants for details page
-  const detailsVariants = {
-    hidden: { opacity: 0, x: "100%" },
-    visible: { opacity: 1, x: 0 },
-    exit: { opacity: 0, x: "100%" },
-  };
-
-  export default function Teams() {
-    const navigate = useNavigate();
-    const [selectedTeam, setSelectedTeam] = useState(null);
-    const [matches, setMatches] = useState([]);
-    const [loading, setLoading] = useState(true);
-    const [error, setError] = useState(null);
-    const [lastUpdated, setLastUpdated] = useState(null);
-    
-    // Player-related state
-    const [players, setPlayers] = useState<Player[]>([]);
-    const [selectedHouseTeam, setSelectedHouseTeam] = useState<string | null>(null);
-    const [playersLoading, setPlayersLoading] = useState(false);
-    
-    // Helper functions for team colors and logos
-    const getTeamColor = (team) => {
-      const houseName = team?.split('-')[0];
-      const teamColors = {
-        'AGNI': '#ef4444',
-        'AAKASH': '#3b82f6', 
-        'VAYU': '#10b981',
-        'JAL': '#06b6d4',
-        'PRUDHVI': '#8b5cf6'
-      };
-      return teamColors[houseName] || '#6b7280';
-    };
-    
-    const getTeamLogo = (team) => {
-      const houseName = team?.split('-')[0];
-      const teamLogos = {
-        'AGNI': agni,
-        'AAKASH': aakash,
-        'VAYU': vayu,
-        'JAL': jal,
-        'PRUDHVI': prudhvi
-      };
-      return teamLogos[houseName] || null;
-    };
-    
-    // Function to fetch all players
-    const fetchPlayers = async () => {
-      try {
-        setPlayersLoading(true);
-        const response = await axios.get(`${import.meta.env.VITE_API_BASE_URL}/players`);
-        setPlayers(response.data);
-        console.log(`Fetched ${response.data.length} players from API`);
-      } catch (err) {
-        console.error('Error fetching players:', err);
-        setPlayers([]);
-        setError('Failed to fetch players. Please try again.');
-      } finally {
-        setPlayersLoading(false);
-      }
-    };
-    
-    // Function to get players for a specific house team
-    const getHouseTeamPlayers = (houseName, teamType) => {
-      const teamName = `${houseName}-${teamType}`;
-      return players.filter(player => player.team === teamName);
-    };
-    
-    // Function to handle team button click
-    const handleTeamClick = async (houseName: string, teamType: string) => {
-      const teamName = `${houseName}-${teamType}`;
-      
-      // If clicking the same team, toggle off
-      if (selectedHouseTeam === teamName) {
-        setSelectedHouseTeam(null);
-        return;
-      }
-      
-      // If players not loaded yet, fetch them
-      if (players.length === 0) {
-        await fetchPlayers();
-      }
-      
-      setSelectedHouseTeam(teamName);
-    };
-
-    // Function to fetch matches
-    const fetchMatches = async () => {
-      try {
-        const apiUrl = `${import.meta.env.VITE_API_BASE_URL}/matches`;
-        const response = await fetch(apiUrl);
-        if (!response.ok) {
-          throw new Error(`HTTP error! status: ${response.status}`);
-        }
-        const data = await response.json();
-        setMatches(data);
-        setError(null);
-        setLastUpdated(new Date());
-      } catch (err) {
-        setError(err.message);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    useEffect(() => {
-      fetchMatches();
-      fetchPlayers(); // Fetch players on component mount
-    }, []);
-
-    // Refresh data when page becomes visible (when navigating from other pages)
-    useEffect(() => {
-      const handleVisibilityChange = () => {
-        if (!document.hidden) {
-        // console.log("Page became visible, refreshing matches...");
-          fetchMatches();
-        }
-      };
-
-      const handleFocus = () => {
-        //console.log("Window focused, refreshing matches...");
-        fetchMatches();
-      };
-
-      // Periodic refresh every 30 seconds
-      const interval = setInterval(() => {
-        //console.log("Periodic refresh of matches...");
-        fetchMatches();
-      }, 30000);
-
-      document.addEventListener('visibilitychange', handleVisibilityChange);
-      window.addEventListener('focus', handleFocus);
-
-      return () => {
-        document.removeEventListener('visibilitychange', handleVisibilityChange);
-        window.removeEventListener('focus', handleFocus);
-        clearInterval(interval);
-      };
-    }, []);
-
-    // Function to get matches for a specific team
-    const getTeamMatches = (teamName) => {
-      // Normalize team name for matching (case-insensitive, sub-team support)
-      const normalized = teamName.toLowerCase();
-      const teamMatches = matches.filter(match =>
-        match.team1.toLowerCase().startsWith(normalized) ||
-        match.team2.toLowerCase().startsWith(normalized)
-      );
-      return teamMatches;
-    };
-
-    const showDetails = (teamId) => {
-      const team = teams.find((team) => team.id === teamId);
-      
-      // Get all matches where this team is involved
-      const teamMatches = matches.filter(match => 
-        match.team1 === team.name || match.team2 === team.name
-      );
-      
-      // Separate upcoming and completed matches
-      const upcomingMatches = teamMatches.filter(match => 
-        match.status === 'upcoming' || match.status === 'scheduled'
-      );
-      
-      const completedMatches = teamMatches.filter(match => 
-        match.status === 'completed' || match.status === 'finished'
-      );
-      
-      // For now, we'll show all matches as fixtures since we don't have winner/score data
-      const pastMatches = completedMatches.map(match => ({
-        opponent: match.team1 === team.name ? match.team2 : match.team1,
-        venue: match.venue,
-        date: match.date,
-        status: match.status,
-        type: match.type
-      }));
-      
-      setSelectedTeam({
-        ...team,
-        pastMatches,
-        upcomingMatches
-      });
-    };
-
-    const hideDetails = () => {
-      setSelectedTeam(null);
-    };
-
-    if (loading) {
-      return (
-        <div className="flex justify-center items-center min-h-screen">
-          <div className="text-center">
-            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4"></div>
-            <p>Loading teams and matches...</p>
-          </div>
-        </div>
-      );
-    }
-
-    if (error) {
-      return (
-        <div className="flex justify-center items-center min-h-screen">
-          <div className="text-center">
-            <div className="text-red-500 mb-4">Error: {error}</div>
-            <Button onClick={() => window.location.reload()}>
-              Try Again
-            </Button>
-          </div>
-        </div>
-      );
-    }
-
+  if (error) {
     return (
-    <div className="bg-background min-h-screen text-gray-900 dark:bg-gray-900 dark:text-gray-100">
-        <div className="relative min-h-screen">
-        {/* Main Teams Grid */}
-        <div className={`space-y-6 p-6 ${selectedTeam ? "hidden" : "block"}`}>
-          {/* Header */}
-          <div className="flex items-center justify-between">
-            <div>
-              <h1 className="text-3xl font-bold text-foreground">Teams</h1>
-              <p className="text-muted-foreground mt-2">
-                Meet the 5 elemental teams competing in the championship
-              </p>
-            </div>
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-gray-50 to-gray-100 dark:from-gray-900 dark:to-gray-800">
+        <div className="text-center">
+          <div className="text-red-500 mb-4">Error: {error}</div>
+          <Button onClick={() => window.location.reload()}>Try Again</Button>
+        </div>
+      </div>
+    );
+  }
 
-            <div className="flex items-center gap-4">
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => {
-                  setLoading(true);
-                  fetchMatches();
+  return (
+    <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 dark:from-gray-900 dark:to-gray-800 overflow-hidden">
+      {/* Circular Layout View */}
+      {!selectedTeam && (
+        <div className="relative min-h-screen overflow-hidden">
+          {/* Background Circles */}
+          <div className="absolute inset-0 overflow-hidden">
+            {[...Array(3)].map((_, i) => (
+              <div
+                key={i}
+                className={`absolute rounded-full border-2 border-gray-200 dark:border-gray-700 opacity-20`}
+                style={{
+                  width: `${300 + i * 200}px`,
+                  height: `${300 + i * 200}px`,
+                  top: '50%',
+                  left: '50%',
+                  transform: `translate(-50%, -50%)`,
+                  animation: `spin-${i % 2 === 0 ? 'reverse' : 'normal'} ${30 + i * 10}s linear infinite`
                 }}
-                disabled={loading}
-              >
-                <Calendar className="mr-2 h-4 w-4" />
-                {loading ? "Refreshing..." : "Refresh Matches"}
-              </Button>
-              
-               {/* <Badge className="shadow-lg text-lg px-4 py-2 bg-primary text-primary-foreground">
-                <Trophy className="mr-2 h-5 w-5" />
-                5 Teams
-              </Badge> */}
-            </div>
+              />
+            ))}
           </div>
 
-          {/* Teams Grid */}
-          <div className="grid gap-6 md:grid-cols-1 lg:grid-cols-2">
-            {/* Status indicator */}
-            {lastUpdated && (
-              <div className="col-span-full text-center text-sm text-muted-foreground mb-2">
-                Last updated: {lastUpdated.toLocaleTimeString()} • {matches.length} matches loaded
+          {/* Main Content */}
+          <div className="relative z-10 max-w-7xl mx-auto px-4 py-8">
+            {/* Header */}
+            <motion.div 
+              initial="hidden"
+              animate="visible"
+              variants={slideIn}
+              className="text-center mb-12"
+            >
+              <div className="inline-flex items-center gap-3 mb-4">
+                <div className="relative">
+                  <div className="w-16 h-16 rounded-full bg-gradient-to-r from-primary to-primary/70 flex items-center justify-center shadow-2xl">
+                    <Trophy className="h-8 w-8 text-white" />
+                  </div>
+                  <div className="absolute -top-1 -right-1 w-6 h-6 rounded-full bg-yellow-500 animate-pulse"></div>
+                </div>
+                <div>
+                  <h1 className="text-5xl font-bold bg-gradient-to-r from-gray-900 to-gray-700 dark:from-white dark:to-gray-300 bg-clip-text text-transparent">
+                    Championship Circle
+                  </h1>
+                  <p className="text-gray-600 dark:text-gray-300 mt-2">
+                    5 teams arranged in circular formation
+                  </p>
+                </div>
               </div>
-            )}
+            </motion.div>
 
-            {teams.map((team, index) => {
-            // Get matches for this team (for card summary)
-            const cardTeamMatches = getTeamMatches(team.name);
-            const cardLiveMatches = cardTeamMatches.filter(match => match.status && match.status.toLowerCase() === 'live');
-            const cardUpcomingMatches = cardTeamMatches.filter(match => match.status && (match.status.toLowerCase() === 'upcoming' || match.status.toLowerCase() === 'scheduled'));
-            const cardRecentMatches = cardTeamMatches.filter(match => match.status && (match.status.toLowerCase() === 'completed' || match.status.toLowerCase() === 'finished')).slice(0, 3);
-              const teamMatches = getTeamMatches(team.name);
-              const upcomingMatches = teamMatches.filter(match => 
-                match.status.toLowerCase() === 'upcoming' || match.status.toLowerCase() === 'scheduled'
-              );
-              const recentMatches = teamMatches.filter(match => 
-                match.status.toLowerCase() === 'completed' || match.status.toLowerCase() === 'finished'
-              ).slice(0, 3); // Show only 3 recent matches
-              const liveMatches = teamMatches.filter(match => 
-                match.status.toLowerCase() === 'live'
-              );
-              return (
-                <motion.div
-                  key={team.id}
-                  variants={cardVariants}
-                  initial="hidden"
-                  animate="visible"
-                  transition={{ 
-                    delay: index * 0.2,
-                    duration: 0.5,
-                    ease: "easeOut"
-                  }}
-                  className="space-y-4"
-                >
-                  {/* Professional Team Card Layout */}
-                  <Card className="shadow-lg border border-gray-200 overflow-hidden flex flex-col md:flex-row items-stretch">
-                    {/* Logo Half */}
-                    <div className="md:w-1/2 flex items-center justify-center bg-white p-6 relative">
-                      <img
-                        src={team.logo}
-                        alt={`${team.name} logo`}
-                        className="w-32 h-32 md:w-40 md:h-40 rounded-full object-cover border-4 border-gray-100 shadow-xl md:absolute md:left-1/2 md:top-1/2 md:-translate-x-1/2 md:-translate-y-1/2"
-                        style={{ zIndex: 2 }}
+            {/* Circular Teams Layout */}
+            <div className="relative h-[600px] w-full">
+              {/* Central Hub */}
+              <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2">
+                <div className="relative">
+                  <div className="w-48 h-48 rounded-full bg-gradient-to-r from-primary/20 to-primary/5 backdrop-blur-sm border border-primary/30 shadow-2xl flex items-center justify-center">
+                    <div className="text-center">
+                      <div className="text-4xl font-bold text-gray-900 dark:text-white">5</div>
+                      <div className="text-sm text-gray-600 dark:text-gray-300">Teams</div>
+                      <div className="text-xs text-gray-500 dark:text-gray-400 mt-2">
+                        Click any team to explore
+                      </div>
+                    </div>
+                  </div>
+                  <div className="absolute inset-0 animate-ping rounded-full bg-primary/10"></div>
+                </div>
+              </div>
+
+              {/* Teams arranged in circle */}
+              {teams.map((team, index) => {
+                const angle = (index / teams.length) * 2 * Math.PI;
+                const radius = 280;
+                const x = Math.cos(angle) * radius;
+                const y = Math.sin(angle) * radius;
+                const Icon = team.icon;
+                const teamMatches = getTeamMatches(team.name);
+                
+                return (
+                  <motion.div
+                    key={team.id}
+                    initial={{ opacity: 0, scale: 0 }}
+                    animate={{ 
+                      opacity: 1, 
+                      scale: 1,
+                      x: x,
+                      y: y
+                    }}
+                    transition={{
+                      delay: index * 0.2,
+                      type: "spring",
+                      stiffness: 100,
+                      damping: 15
+                    }}
+                    className="absolute top-1/2 left-1/2 cursor-pointer group"
+                    style={{
+                      transform: `translate(${x}px, ${y}px) translate(-50%, -50%)`
+                    }}
+                    onClick={() => showDetails(team.id)}
+                  >
+                    <div className="relative">
+                      {/* Outer Ring */}
+                      <div 
+                        className="absolute inset-0 rounded-full animate-spin-slow"
+                        style={{
+                          border: `2px dashed ${team.iconColor}50`,
+                          width: '140px',
+                          height: '140px',
+                          transform: 'translate(-50%, -50%)'
+                        }}
                       />
-                    </div>
-                    {/* Details Half */}
-                    <div className="md:w-1/2 flex flex-col justify-center p-6 bg-white">
-                      <CardTitle className="text-2xl font-bold text-black mb-2">{team.name}</CardTitle>
-                      <div className="text-gray-700 mb-2">{team.description}</div>
-                      <div className="grid grid-cols-2 gap-4 text-sm mb-2">
-                        <div>
-                          <div className="text-gray-500">Captain</div>
-                          <div className="font-medium text-black">{team.captain}</div>
-                        </div>
-                        <div>
-                          <div className="text-gray-500">Founded</div>
-                          <div className="font-medium text-black">{team.founded}</div>
-                        </div>
-                      </div>
-                      <div className="text-sm mb-2">
-                        <div className="text-gray-500">Home Ground</div>
-                        <div className="font-medium text-black">{team.home_ground}</div>
-                      </div>
-                      <div className="flex gap-2 mt-4 flex-wrap">
-                        <Button 
-                          variant="outline" 
-                          size="sm" 
-                          className="bg-white text-black border-gray-300 hover:bg-gray-100 shadow-sm"
-                          onClick={() => handleTeamClick(team.name, 'A')}
-                          disabled={playersLoading}
-                        >
-                          {playersLoading ? 'Loading...' : 'TEAM-A'}
-                        </Button>
-                        <Button 
-                          variant="outline" 
-                          size="sm" 
-                          className="bg-white text-black border-gray-300 hover:bg-gray-100 shadow-sm"
-                          onClick={() => handleTeamClick(team.name, 'B')}
-                          disabled={playersLoading}
-                        >
-                          {playersLoading ? 'Loading...' : 'TEAM-B'}
-                        </Button>
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          className="bg-white text-black border-gray-300 hover:bg-gray-100 shadow-sm"
-                          onClick={() => setSelectedTeam(team)}
-                        >
-                          See Details
-                        </Button>
-                      </div>
-                    </div>
-                  </Card>
-
-                  {/* Players Display Card - shows when a team A/B is selected */}
-                  {selectedHouseTeam && selectedHouseTeam.startsWith(team.name) && (
-                    <Card className="shadow border border-gray-200 mt-4">
-                      <CardHeader className="pb-3">
-                        <CardTitle className="text-lg flex items-center justify-between">
-                          <div className="flex items-center gap-3">
-                            {getTeamLogo(selectedHouseTeam) && (
-                              <img 
-                                src={getTeamLogo(selectedHouseTeam)} 
-                                alt={`${selectedHouseTeam} logo`}
-                                className="w-8 h-8 rounded-full object-cover"
-                              />
-                            )}
-                            <span style={{ color: getTeamColor(selectedHouseTeam) }}>
-                              {selectedHouseTeam} Players
-                            </span>
-                          </div>
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => setSelectedHouseTeam(null)}
-                            className="p-2"
+                      
+                      {/* Team Circle */}
+                      <div 
+                        className="w-32 h-32 rounded-full flex flex-col items-center justify-center transform transition-all duration-500 group-hover:scale-110 group-hover:shadow-2xl group-hover:-translate-y-2"
+                        style={{
+                          backgroundColor: team.bgColor,
+                          border: `3px solid ${team.iconColor}`,
+                          boxShadow: `0 10px 40px ${team.iconColor}40`
+                        }}
+                      >
+                        {/* Icon */}
+                        <div className="mb-2">
+                          <div 
+                            className="w-12 h-12 rounded-full flex items-center justify-center"
+                            style={{ backgroundColor: team.iconColor }}
                           >
-                            <X className="h-4 w-4" />
-                          </Button>
-                        </CardTitle>
-                        <p className="text-sm text-gray-600">
-                          {getHouseTeamPlayers(selectedHouseTeam.split('-')[0], selectedHouseTeam.split('-')[1]).length} players in this team
-                        </p>
-                      </CardHeader>
-                      <CardContent>
-                        {playersLoading ? (
-                          <div className="flex justify-center items-center py-6">
-                            <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-primary"></div>
+                            <Icon className="h-6 w-6 text-white" />
                           </div>
-                        ) : (
-                          <>
-                            {getHouseTeamPlayers(selectedHouseTeam.split('-')[0], selectedHouseTeam.split('-')[1]).length > 0 ? (
-                              <div className="overflow-x-auto">
-                                <Table>
-                                  <TableHeader>
-                                    <TableRow className="bg-gray-50">
-                                      <TableHead className="text-center font-semibold">PIN</TableHead>
-                                      <TableHead className="font-semibold">Player</TableHead>
-                                      <TableHead className="text-center font-semibold">Team</TableHead>
-                                      <TableHead className="text-center font-semibold text-blue-600">Runs</TableHead>
-                                      <TableHead className="text-center font-semibold">Mat</TableHead>
-                                      <TableHead className="text-center font-semibold">Inns</TableHead>
-                                      <TableHead className="text-center font-semibold">HS</TableHead>
-                                      <TableHead className="text-center font-semibold">Avg</TableHead>
-                                      <TableHead className="text-center font-semibold">SR</TableHead>
-                                      <TableHead className="text-center font-semibold">100</TableHead>
-                                      <TableHead className="text-center font-semibold">50</TableHead>
-                                      <TableHead className="text-center font-semibold">4s</TableHead>
-                                      <TableHead className="text-center font-semibold">6s</TableHead>
-                                    </TableRow>
-                                  </TableHeader>
-                                  <TableBody>
-                                    {getHouseTeamPlayers(selectedHouseTeam.split('-')[0], selectedHouseTeam.split('-')[1]).map((player, index) => (
-                                      <TableRow 
-                                        key={player._id} 
-                                        className="hover:bg-gray-50 cursor-pointer transition-colors"
-                                        onClick={() => {
-                                          // Navigate to Players page with player ID to highlight
-                                          navigate(`/players?highlight=${player._id}`);
-                                        }}
-                                      >
-                                        <TableCell className="text-center font-mono text-sm">
-                                          {player.pinno}
-                                        </TableCell>
-                                        <TableCell>
-                                          <div className="flex items-center gap-3">
-                                            <Avatar className="w-8 h-8">
-                                              <AvatarImage 
-                                                src={player.photoUrl ? (player.photoUrl.startsWith('http') ? player.photoUrl : `http://localhost:5001${player.photoUrl}`) : undefined} 
-                                                alt={player.name} 
-                                              />
-                                              <AvatarFallback 
-                                                className="text-white text-xs font-semibold"
-                                                style={{ backgroundColor: getTeamColor(selectedHouseTeam) }}
-                                              >
-                                                {player.name.split(' ').map(n => n[0]).join('')}
-                                              </AvatarFallback>
-                                            </Avatar>
-                                            <div>
-                                              <div className="font-medium text-sm">{player.name}</div>
-                                              {player.position && (
-                                                <div className="text-xs text-gray-500 capitalize">{player.position}</div>
-                                              )}
-                                            </div>
-                                          </div>
-                                        </TableCell>
-                                        <TableCell className="text-center">
-                                          <div className="flex items-center justify-center gap-2">
-                                            {getTeamLogo(selectedHouseTeam) && (
-                                              <img 
-                                                src={getTeamLogo(selectedHouseTeam)} 
-                                                alt={`${selectedHouseTeam} logo`}
-                                                className="w-5 h-5 rounded-full object-cover"
-                                              />
-                                            )}
-                                            <Badge 
-                                              variant="outline"
-                                              className="text-xs"
-                                              style={{ 
-                                                color: getTeamColor(selectedHouseTeam),
-                                                borderColor: getTeamColor(selectedHouseTeam) + '40'
-                                              }}
-                                            >
-                                              {player.team}
-                                            </Badge>
-                                          </div>
-                                        </TableCell>
-                                        <TableCell className="text-center font-semibold text-blue-600">
-                                          {player.runs}
-                                        </TableCell>
-                                        <TableCell className="text-center">{player.matches}</TableCell>
-                                        <TableCell className="text-center">{player.innings}</TableCell>
-                                        <TableCell className="text-center font-semibold">{player.highest_score}</TableCell>
-                                        <TableCell className="text-center">
-                                          {player.average ? Number(player.average).toFixed(2) : '0.00'}
-                                        </TableCell>
-                                        <TableCell className="text-center">
-                                          {player.strike_rate ? Number(player.strike_rate).toFixed(2) : '0.00'}
-                                        </TableCell>
-                                        <TableCell className="text-center">
-                                          <Badge 
-                                            variant={player.hundreds > 0 ? "default" : "secondary"}
-                                            className={`text-xs ${player.hundreds > 0 ? 'bg-green-600' : ''}`}
-                                          >
-                                            {player.hundreds}
-                                          </Badge>
-                                        </TableCell>
-                                        <TableCell className="text-center">
-                                          <Badge 
-                                            variant={player.fifties > 0 ? "default" : "secondary"}
-                                            className={`text-xs ${player.fifties > 0 ? 'bg-yellow-600' : ''}`}
-                                          >
-                                            {player.fifties}
-                                          </Badge>
-                                        </TableCell>
-                                        <TableCell className="text-center">{player.fours}</TableCell>
-                                        <TableCell className="text-center">{player.sixes}</TableCell>
-                                      </TableRow>
-                                    ))}
-                                  </TableBody>
-                                </Table>
-                              </div>
-                            ) : (
-                              <div className="text-center py-6">
-                                <div className="text-gray-500 mb-2">No players found for {selectedHouseTeam}</div>
-                                <p className="text-sm text-gray-400">Players will appear here once they are added to this team.</p>
-                              </div>
-                            )}
-                          </>
-                        )}
-                      </CardContent>
-                    </Card>
-                  )}
-
-                  {/* Fixtures Card below team card, only if selectedTeam is this team */}
-                  {selectedTeam && selectedTeam.id === team.id && (
-                    <Card className="shadow border border-gray-200 mt-2">
-                      <CardHeader className="pb-2">
-                        <CardTitle className="text-lg flex items-center gap-2">
-                          <Calendar className="h-5 w-5 text-primary" />
-                          {team.name} Fixtures
-                        </CardTitle>
-                      </CardHeader>
-                      <CardContent className="space-y-3">
-                        {/* Live Matches */}
-                        {cardLiveMatches.length > 0 && (
-                          <div>
-                            <h4 className="font-medium text-sm text-green-600 mb-2">Live</h4>
-                            <div className="space-y-2">
-                              {cardLiveMatches.map((match, idx) => (
-                                <div key={`live-${idx}`} className="p-3 bg-green-50 rounded-lg border border-green-200">
-                                  <div className="flex items-center justify-between">
-                                    <div className="font-medium text-sm">
-                                      vs {match.team1.toLowerCase().startsWith(team.name.toLowerCase()) ? match.team2 : match.team1}
-                                    </div>
-                                    <Badge variant="outline" className="text-xs">
-                                      {match.type}
-                                    </Badge>
-                                  </div>
-                                  <div className="flex items-center gap-3 text-xs text-muted-foreground mt-1">
-                                    <div className="flex items-center gap-1">
-                                      <Calendar className="h-3 w-3" />
-                                      <span>{new Date(match.date).toLocaleDateString()}</span>
-                                    </div>
-                                    <div className="flex items-center gap-1">
-                                      <MapPin className="h-3 w-3" />
-                                      <span>{match.venue}</span>
-                                    </div>
-                                  </div>
-                                </div>
-                              ))}
-                            </div>
+                        </div>
+                        
+                        {/* Team Name */}
+                        <div className="text-center">
+                          <div className="font-bold text-sm text-gray-900 dark:text-white">
+                            {team.shortName}
                           </div>
-                        )}
-
-                        {/* Upcoming Matches */}
-                        {cardUpcomingMatches.length > 0 && (
-                          <div>
-                            <h4 className="font-medium text-sm text-primary mb-2">Upcoming</h4>
-                            <div className="space-y-2">
-                              {cardUpcomingMatches.map((match, idx) => (
-                                <div key={`upcoming-${idx}`} className="p-3 bg-primary/5 rounded-lg border border-primary/10">
-                                  <div className="flex items-center justify-between">
-                                    <div className="font-medium text-sm">
-                                      vs {match.team1.toLowerCase().startsWith(team.name.toLowerCase()) ? match.team2 : match.team1}
-                                    </div>
-                                    <Badge variant="secondary" className="text-xs">
-                                      {match.type}
-                                    </Badge>
-                                  </div>
-                                  <div className="flex items-center gap-3 text-xs text-muted-foreground mt-1">
-                                    <div className="flex items-center gap-1">
-                                      <Calendar className="h-3 w-3" />
-                                      <span>{new Date(match.date).toLocaleDateString()}</span>
-                                    </div>
-                                    <div className="flex items-center gap-1">
-                                      <MapPin className="h-3 w-3" />
-                                      <span>{match.venue}</span>
-                                    </div>
-                                  </div>
-                                </div>
-                              ))}
-                            </div>
+                          <div className="text-xs text-gray-600 dark:text-gray-300 mt-1">
+                            {teamMatches.length} matches
                           </div>
-                        )}
-
-                        {/* Recent Matches */}
-                        {cardRecentMatches.length > 0 && (
-                          <div>
-                            <h4 className="font-medium text-sm text-muted-foreground mb-2">Recent</h4>
-                            <div className="space-y-2">
-                              {cardRecentMatches.map((match, idx) => (
-                                <div key={`recent-${idx}`} className="p-3 bg-muted/30 rounded-lg">
-                                  <div className="flex items-center justify-between">
-                                    <div className="font-medium text-sm">
-                                      vs {match.team1.toLowerCase().startsWith(team.name.toLowerCase()) ? match.team2 : match.team1}
-                                    </div>
-                                    <Badge variant="outline" className="text-xs">
-                                      {match.type}
-                                    </Badge>
-                                  </div>
-                                  <div className="flex items-center gap-3 text-xs text-muted-foreground mt-1">
-                                    <div className="flex items-center gap-1">
-                                      <Calendar className="h-3 w-3" />
-                                      <span>{new Date(match.date).toLocaleDateString()}</span>
-                                    </div>
-                                    <div className="flex items-center gap-1">
-                                      <MapPin className="h-3 w-3" />
-                                      <span>{match.venue}</span>
-                                    </div>
-                                  </div>
-                                </div>
-                              ))}
-                            </div>
-                          </div>
-                        )}
-
-                        {/* No matches message */}
-                        {!loading && cardTeamMatches.length === 0 && (
-                          <div className="text-center py-4 text-muted-foreground">
-                            <Calendar className="h-6 w-6 mx-auto mb-2" />
-                            <p className="text-sm">No fixtures available for {team.name}</p>
-                          </div>
-                        )}
-                      </CardContent>
-                    </Card>
-                  )}
-
-                  {/* Modal for Fixtures */}
-                  {selectedTeam && selectedTeam.id === team.id && (
-                    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-40">
-                      <div className="bg-white rounded-lg shadow-2xl max-w-lg w-full p-6 relative">
-                        <button
-                          className="absolute top-2 right-2 text-gray-500 hover:text-black"
-                          onClick={() => setSelectedTeam(null)}
-                          aria-label="Close"
-                        >
-                          &times;
-                        </button>
-                        <h2 className="text-xl font-bold mb-4 text-black">{team.name} Fixtures</h2>
-                        {teamMatches.length === 0 ? (
-                          <p className="text-gray-500">No fixtures available for {team.name}</p>
-                        ) : (
-                          <div className="space-y-4">
-                            {teamMatches.sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime()).map((match, idx) => (
-                              <div key={idx} className="border border-gray-200 rounded-lg p-4 bg-white flex flex-col gap-2">
-                                <div className="flex justify-between items-center">
-                                  <span className="font-semibold text-black">vs {match.team1.toLowerCase().startsWith(team.name.toLowerCase()) ? match.team2 : match.team1}</span>
-                                  <span className="text-xs px-2 py-1 rounded bg-gray-100 text-gray-700">{match.type}</span>
-                                </div>
-                                <div className="flex gap-4 text-sm text-gray-600">
-                                  <span><Calendar className="inline h-4 w-4 mr-1" />{new Date(match.date).toLocaleDateString()}</span>
-                                  <span><MapPin className="inline h-4 w-4 mr-1" />{match.venue}</span>
-                                </div>
-                              </div>
-                            ))}
-                          </div>
-                        )}
+                        </div>
+                      </div>
+                      
+                      {/* Hover Indicator */}
+                      <div className="absolute -bottom-2 left-1/2 transform -translate-x-1/2 opacity-0 group-hover:opacity-100 transition-opacity">
+                        <ChevronRight className="h-5 w-5 text-primary animate-bounce" />
                       </div>
                     </div>
-                  )}
+                  </motion.div>
+                );
+              })}
+            </div>
 
-                  {/* No matches message (always hidden, fixtures only in details) */}
-                  {!loading && teamMatches.length === 0 && (
-                    <Card className="shadow-md border border-muted/20">
-                      <CardContent className="text-center py-6">
-                        <Calendar className="h-8 w-8 text-muted-foreground mx-auto mb-2" />
-                        <p className="text-sm text-muted-foreground">No fixtures available for {team.name}</p>
-                      </CardContent>
-                    </Card>
-                  )}
-                </motion.div>
-              );
-            })}
+            {/* Bottom Info Panel */}
+            <motion.div 
+              initial="hidden"
+              animate="visible"
+              variants={fadeIn}
+              transition={{ delay: 1 }}
+              className="mt-20"
+            >
+              <div className="max-w-4xl mx-auto">
+
+              </div>
+            </motion.div>
           </div>
         </div>
+      )}
 
-        {/* Details Page */}
-        {selectedTeam && (
-          <motion.div
-            className="fixed inset-0 bg-background z-50 overflow-y-auto"
-            variants={detailsVariants}
-            initial="hidden"
-            animate="visible"
-            exit="exit"
-            transition={{
-              duration: 0.5,
-              ease: "easeInOut"
-            }}
-          >
-            <div className="p-6 max-w-4xl mx-auto min-h-screen">
-              <Card className="shadow-lg border border-primary/20">
-                <CardHeader>
-                  <div className="flex items-center justify-between">
-                    <CardTitle className="flex items-center gap-2 text-2xl">
-                      <Trophy className="h-6 w-6 text-primary" />
-                      {selectedTeam.name} Details
-                    </CardTitle>
-                    <Button
-                      variant="outline"
-                      className="shadow-sm hover:bg-primary/10"
-                      onClick={hideDetails}
+      {/* Team Details View - Radial Design */}
+      {selectedTeam && (
+        <motion.div
+          initial="hidden"
+          animate="visible"
+          variants={fadeIn}
+          className="relative min-h-screen overflow-hidden"
+        >
+          {/* Background Radial Gradient */}
+          <div className="absolute inset-0 overflow-hidden">
+            <div 
+              className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2"
+              style={{
+                width: '200vw',
+                height: '200vh',
+                background: `radial-gradient(circle, ${selectedTeam.iconColor}10 0%, transparent 70%)`,
+              }}
+            />
+          </div>
+
+          <div className="relative z-10 max-w-6xl mx-auto px-4 py-8">
+            {/* Back Button */}
+            <motion.div
+              initial={{ x: -20, opacity: 0 }}
+              animate={{ x: 0, opacity: 1 }}
+              className="mb-8"
+            >
+              <Button
+                onClick={hideDetails}
+                variant="ghost"
+                className="group gap-2 hover:bg-white/20 backdrop-blur-sm"
+              >
+                <ArrowLeft className="h-5 w-5 group-hover:-translate-x-1 transition-transform" />
+                Back to Circle
+              </Button>
+            </motion.div>
+
+            {/* Team Header - Radial Design */}
+            <div className="text-center mb-12">
+              <motion.div
+                initial={{ scale: 0.5, opacity: 0 }}
+                animate={{ scale: 1, opacity: 1 }}
+                transition={{ type: "spring", stiffness: 200 }}
+                className="inline-flex items-center justify-center relative"
+              >
+                {/* Outer Rings */}
+                <div className="absolute inset-0">
+                  {[...Array(3)].map((_, i) => (
+                    <div
+                      key={i}
+                      className="absolute rounded-full border-2 animate-spin-slow"
+                      style={{
+                        width: `${200 + i * 60}px`,
+                        height: `${200 + i * 60}px`,
+                        top: '50%',
+                        left: '50%',
+                        transform: 'translate(-50%, -50%)',
+                        borderColor: `${selectedTeam.iconColor}${20 + i * 20}`,
+                        animationDirection: i % 2 === 0 ? 'reverse' : 'normal'
+                      }}
+                    />
+                  ))}
+                </div>
+
+                {/* Main Team Circle */}
+                <div 
+                  className="w-64 h-64 rounded-full flex flex-col items-center justify-center relative z-10 shadow-2xl"
+                  style={{
+                    background: `linear-gradient(135deg, ${selectedTeam.iconColor}20, ${selectedTeam.iconColor}40)`,
+                    border: `4px solid ${selectedTeam.iconColor}`,
+                  }}
+                >
+                  <div className="mb-4">
+                    <div 
+                      className="w-20 h-20 rounded-full flex items-center justify-center shadow-lg"
+                      style={{ backgroundColor: selectedTeam.iconColor }}
                     >
-                      <ArrowLeft className="mr-2 h-4 w-4" />
-                      Back to Teams
-                    </Button>
+                      <selectedTeam.icon className="h-10 w-10 text-white" />
+                    </div>
                   </div>
-                </CardHeader>
-                <CardContent className="space-y-6">
-                  <div className="flex items-center justify-center mb-4">
-                    <div className="w-24 h-24 rounded-full bg-primary/10 flex items-center justify-center">
-                      {selectedTeam.logo ? (
-                        <img
-                          src={selectedTeam.logo}
-                          alt={`${selectedTeam.name} logo`}
-                          className="w-20 h-20 rounded-full object-cover"
-                        />
-                      ) : (
-                        <Trophy className="h-12 w-12 text-primary" />
-                      )}
+                  <h1 className="text-4xl font-bold text-gray-900 dark:text-white">
+                    {selectedTeam.name}
+                  </h1>
+                  <p className="text-gray-600 dark:text-gray-300 mt-2">
+                    Since {selectedTeam.founded}
+                  </p>
+                </div>
+              </motion.div>
+            </div>
+
+            {/* Radial Stats Layout */}
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 mb-12">
+              {/* Left Column - Team Info */}
+              <motion.div
+                initial={{ x: -50, opacity: 0 }}
+                animate={{ x: 0, opacity: 1 }}
+                transition={{ delay: 0.2 }}
+                className="lg:col-span-2"
+              >
+                <div className="space-y-6">
+                  {/* Description in circular format */}
+                  <div className="relative">
+                    <div className="bg-gradient-to-r from-white/90 to-gray-50/90 dark:from-gray-800/90 dark:to-gray-900/90 backdrop-blur-sm rounded-3xl p-8 shadow-xl border border-gray-200 dark:border-gray-700">
+                      <div className="flex items-start gap-4">
+                        <div 
+                          className="flex-shrink-0 w-16 h-16 rounded-full flex items-center justify-center"
+                          style={{ backgroundColor: selectedTeam.bgColor }}
+                        >
+                          <Target className="h-8 w-8" style={{ color: selectedTeam.iconColor }} />
+                        </div>
+                        <div>
+                          <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-3">
+                            Team Philosophy
+                          </h3>
+                          <p className="text-gray-700 dark:text-gray-300 leading-relaxed">
+                            {selectedTeam.description}
+                          </p>
+                        </div>
+                      </div>
                     </div>
                   </div>
 
-                  <div className="text-center">
-                    <h2 className="text-xl font-semibold">{selectedTeam.name}</h2>
-                    {selectedTeam.description && (
-                      <p className="text-sm text-muted-foreground mt-2">{selectedTeam.description}</p>
-                    )}
+                  {/* Key Stats in Radial Grid */}
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                    {[
+                      { label: "Captain", value: selectedTeam.captain, icon: UserCheck },
+                      { label: "Home Ground", value: selectedTeam.home_ground, icon: Home },
+                      { label: "Established", value: selectedTeam.founded, icon: Calendar },
+                      { label: "Total Matches", value: selectedTeam.totalMatches || 0, icon: Trophy },
+                    ].map((stat, index) => (
+                      <motion.div
+                        key={index}
+                        initial={{ scale: 0, opacity: 0 }}
+                        animate={{ scale: 1, opacity: 1 }}
+                        transition={{ delay: 0.3 + index * 0.1 }}
+                        className="relative"
+                      >
+                        <div className="aspect-square rounded-2xl bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm border border-gray-200 dark:border-gray-700 p-6 flex flex-col items-center justify-center text-center shadow-lg hover:shadow-xl transition-shadow">
+                          <div 
+                            className="w-12 h-12 rounded-full flex items-center justify-center mb-3"
+                            style={{ backgroundColor: selectedTeam.bgColor }}
+                          >
+                            <stat.icon className="h-6 w-6" style={{ color: selectedTeam.iconColor }} />
+                          </div>
+                          <div className="text-2xl font-bold text-gray-900 dark:text-white mb-1">
+                            {stat.value}
+                          </div>
+                          <div className="text-sm text-gray-600 dark:text-gray-300">
+                            {stat.label}
+                          </div>
+                        </div>
+                      </motion.div>
+                    ))}
                   </div>
+                </div>
+              </motion.div>
 
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-center">
-                    {selectedTeam.captain && (
-                      <div>
-                        <div className="text-muted-foreground">Captain</div>
-                        <div className="font-medium">{selectedTeam.captain}</div>
-                      </div>
-                    )}
-                    {selectedTeam.founded && (
-                      <div>
-                        <div className="text-muted-foreground">Founded</div>
-                        <div className="font-medium">{selectedTeam.founded}</div>
-                      </div>
-                    )}
-                    {selectedTeam.home_ground && (
-                      <div>
-                        <div className="text-muted-foreground">Home Ground</div>
-                        <div className="font-medium">{selectedTeam.home_ground}</div>
-                      </div>
-                    )}
-                  </div>
-
-                  {/* All related matches for this team */}
-                  <div className="space-y-4 mt-8">
-                    <div className="text-lg font-semibold text-center mb-3 flex items-center justify-center gap-2">
-                      <Calendar className="h-5 w-5 text-primary" />
-                      All Related Matches
-                    </div>
+              {/* Right Column - Upcoming Matches Radial */}
+              <motion.div
+                initial={{ x: 50, opacity: 0 }}
+                animate={{ x: 0, opacity: 1 }}
+                transition={{ delay: 0.4 }}
+                className="relative"
+              >
+                <div className="sticky top-8">
+                  <div className="bg-gradient-to-b from-white/90 to-gray-50/90 dark:from-gray-800/90 dark:to-gray-900/90 backdrop-blur-sm rounded-3xl p-8 shadow-xl border border-gray-200 dark:border-gray-700 h-full">
+                    <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-6 flex items-center gap-2">
+                      <PlayCircle className="h-6 w-6" style={{ color: selectedTeam.iconColor }} />
+                      Upcoming Fixtures
+                    </h3>
+                    
                     {(() => {
-                      const relatedMatches = getTeamMatches(selectedTeam.name).sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
-                      if (relatedMatches.length === 0) {
+                      const upcomingMatches = getTeamMatches(selectedTeam.name)
+                        .filter(m => m.status === 'upcoming' || m.status === 'scheduled')
+                        .slice(0, 4);
+                      
+                      if (upcomingMatches.length === 0) {
                         return (
                           <div className="text-center py-8">
-                            <Calendar className="h-12 w-12 text-muted-foreground mx-auto mb-2" />
-                            <p className="text-muted-foreground">No fixtures available for this team.</p>
+                            <div className="w-24 h-24 rounded-full bg-gray-100 dark:bg-gray-800 flex items-center justify-center mx-auto mb-4">
+                              <Calendar className="h-12 w-12 text-gray-400" />
+                            </div>
+                            <p className="text-gray-500 dark:text-gray-400">No upcoming matches</p>
                           </div>
                         );
                       }
+                      
                       return (
-                        <div className="space-y-3">
-                          {relatedMatches.map((match, idx) => (
-                            <Card key={`related-${idx}`} className="p-4 border border-gray-200 bg-white">
-                              <div className="flex flex-col space-y-2">
-                                <div className="font-medium text-center">
-                                  {selectedTeam.name} vs {match.team1.toLowerCase().startsWith(selectedTeam.name.toLowerCase()) ? match.team2 : match.team1}
+                        <div className="space-y-4">
+                          {upcomingMatches.map((match, index) => (
+                            <motion.div
+                              key={index}
+                              initial={{ opacity: 0, x: 20 }}
+                              animate={{ opacity: 1, x: 0 }}
+                              transition={{ delay: 0.5 + index * 0.1 }}
+                              className="flex items-center gap-4 p-4 rounded-2xl bg-white/50 dark:bg-gray-900/50 backdrop-blur-sm border border-gray-200 dark:border-gray-700 hover:bg-white/70 dark:hover:bg-gray-900/70 transition-colors"
+                            >
+                              <div 
+                                className="flex-shrink-0 w-12 h-12 rounded-full flex items-center justify-center"
+                                style={{ backgroundColor: selectedTeam.bgColor }}
+                              >
+                                <Calendar className="h-6 w-6" style={{ color: selectedTeam.iconColor }} />
+                              </div>
+                              <div className="flex-1">
+                                <div className="font-medium text-gray-900 dark:text-white">
+                                  vs {match.team1 === selectedTeam.name ? match.team2 : match.team1}
                                 </div>
-                                <div className="flex items-center justify-center gap-4 text-sm text-muted-foreground">
-                                  <div className="flex items-center gap-1">
-                                    <Calendar className="h-4 w-4" />
-                                    <span>{new Date(match.date).toLocaleDateString()}</span>
-                                  </div>
-                                  <div className="flex items-center gap-1">
-                                    <MapPin className="h-4 w-4" />
-                                    <span>{match.venue}</span>
-                                  </div>
-                                  <div className="flex items-center gap-1">
-                                    <Trophy className="h-4 w-4" />
-                                    <span>{match.type}</span>
-                                  </div>
+                                <div className="text-sm text-gray-600 dark:text-gray-300">
+                                  {new Date(match.date).toLocaleDateString()}
                                 </div>
                               </div>
-                            </Card>
+                              <Badge 
+                                className="px-3 py-1 rounded-full"
+                                style={{ 
+                                  backgroundColor: selectedTeam.bgColor,
+                                  color: selectedTeam.iconColor
+                                }}
+                              >
+                                {match.type}
+                              </Badge>
+                            </motion.div>
                           ))}
                         </div>
                       );
                     })()}
                   </div>
-                </CardContent>
-              </Card>
+                </div>
+              </motion.div>
             </div>
-          </motion.div>
-        )}
-        
-      </div>
+
+            {/* Team Squad Section */}
+            <motion.div
+              initial={{ y: 50, opacity: 0 }}
+              animate={{ y: 0, opacity: 1 }}
+              transition={{ delay: 0.5 }}
+              className="mb-12"
+            >
+              <div className="bg-gradient-to-r from-white/90 to-gray-50/90 dark:from-gray-800/90 dark:to-gray-900/90 backdrop-blur-sm rounded-3xl p-8 shadow-xl border border-gray-200 dark:border-gray-700">
+                <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-6 flex items-center gap-2">
+                  <Users className="h-6 w-6" style={{ color: selectedTeam.iconColor }} />
+                  Team Squad
+                </h3>
+                
+                {teamPlayers.length === 0 ? (
+                  <div className="text-center py-8">
+                    <div className="w-24 h-24 rounded-full bg-gray-100 dark:bg-gray-800 flex items-center justify-center mx-auto mb-4">
+                      <Users className="h-12 w-12 text-gray-400" />
+                    </div>
+                    <p className="text-gray-500 dark:text-gray-400">No players found for this team</p>
+                  </div>
+                ) : (
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                    {teamPlayers.map((player, index) => (
+                      <motion.div
+                        key={player._id}
+                        initial={{ opacity: 0, scale: 0.9 }}
+                        animate={{ opacity: 1, scale: 1 }}
+                        transition={{ delay: 0.6 + index * 0.05 }}
+                        className="relative"
+                      >
+                        <div className="bg-white/50 dark:bg-gray-900/50 backdrop-blur-sm rounded-2xl p-6 border border-gray-200 dark:border-gray-700 hover:bg-white/70 dark:hover:bg-gray-900/70 transition-all hover:shadow-lg group">
+                          {/* Player Header */}
+                          <div className="flex items-start gap-4 mb-4">
+                            <div 
+                              className="flex-shrink-0 w-12 h-12 rounded-full flex items-center justify-center font-bold text-white text-lg"
+                              style={{ backgroundColor: selectedTeam.iconColor }}
+                            >
+                              {player.name.charAt(0).toUpperCase()}
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <h4 className="font-bold text-gray-900 dark:text-white truncate group-hover:text-primary transition-colors">
+                                {player.name}
+                              </h4>
+                              {player.position && (
+                                <p className="text-sm text-gray-600 dark:text-gray-300">
+                                  {player.position}
+                                </p>
+                              )}
+                            </div>
+                          </div>
+
+                          {/* Player Stats */}
+                          <div className="space-y-2">
+                            <div className="flex justify-between items-center">
+                              <span className="text-sm text-gray-600 dark:text-gray-300">Matches</span>
+                              <span className="font-semibold text-gray-900 dark:text-white">{player.matches || 0}</span>
+                            </div>
+                            <div className="flex justify-between items-center">
+                              <span className="text-sm text-gray-600 dark:text-gray-300">Runs</span>
+                              <span className="font-semibold text-gray-900 dark:text-white">{player.runs || 0}</span>
+                            </div>
+                            {player.average !== undefined && player.average > 0 && (
+                              <div className="flex justify-between items-center">
+                                <span className="text-sm text-gray-600 dark:text-gray-300">Average</span>
+                                <span className="font-semibold text-gray-900 dark:text-white">{player.average.toFixed(2)}</span>
+                              </div>
+                            )}
+                            {player.highest_score > 0 && (
+                              <div className="flex justify-between items-center">
+                                <span className="text-sm text-gray-600 dark:text-gray-300">Highest Score</span>
+                                <span className="font-semibold text-gray-900 dark:text-white">{player.highest_score}</span>
+                              </div>
+                            )}
+                          </div>
+
+                          {/* Batting & Bowling Style */}
+                          {(player.battingStyle || player.bowlingStyle) && (
+                            <div className="mt-4 pt-4 border-t border-gray-200 dark:border-gray-700">
+                              {player.battingStyle && (
+                                <div className="text-xs text-gray-600 dark:text-gray-300 mb-1">
+                                  <span className="font-medium">Bat:</span> {player.battingStyle}
+                                </div>
+                              )}
+                              {player.bowlingStyle && (
+                                <div className="text-xs text-gray-600 dark:text-gray-300">
+                                  <span className="font-medium">Bowl:</span> {player.bowlingStyle}
+                                </div>
+                              )}
+                            </div>
+                          )}
+                        </div>
+                      </motion.div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </motion.div>
+
+            {/* Match History - Circular Timeline */}
+            <motion.div
+              initial={{ y: 50, opacity: 0 }}
+              animate={{ y: 0, opacity: 1 }}
+              transition={{ delay: 0.6 }}
+              className="mb-12"
+            >
+              <div className="bg-gradient-to-r from-white/90 to-gray-50/90 dark:from-gray-800/90 dark:to-gray-900/90 backdrop-blur-sm rounded-3xl p-8 shadow-xl border border-gray-200 dark:border-gray-700">
+                <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-6 flex items-center gap-2">
+                  <Circle className="h-6 w-6 animate-pulse" style={{ color: selectedTeam.iconColor }} />
+                  Recent Match Timeline
+                </h3>
+                
+                <div className="relative">
+                  {/* Timeline Line */}
+                  <div className="absolute left-8 top-0 bottom-0 w-1 bg-gradient-to-b from-primary via-primary/50 to-transparent"></div>
+                  
+                  <div className="space-y-6 pl-12">
+                    {getTeamMatches(selectedTeam.name)
+                      .filter(m => m.status === 'completed' || m.status === 'finished')
+                      .slice(0, 5)
+                      .map((match, index) => (
+                        <motion.div
+                          key={index}
+                          initial={{ opacity: 0, x: -20 }}
+                          animate={{ opacity: 1, x: 0 }}
+                          transition={{ delay: 0.7 + index * 0.1 }}
+                          className="relative"
+                        >
+                          {/* Timeline Dot */}
+                          <div 
+                            className="absolute -left-7 top-1/2 transform -translate-y-1/2 w-4 h-4 rounded-full border-4 border-white dark:border-gray-800"
+                            style={{ backgroundColor: selectedTeam.iconColor }}
+                          />
+                          
+                          <div className="bg-white/50 dark:bg-gray-900/50 backdrop-blur-sm rounded-2xl p-6 border border-gray-200 dark:border-gray-700 hover:bg-white/70 dark:hover:bg-gray-900/70 transition-colors">
+                            <div className="flex items-center justify-between">
+                              <div>
+                                <div className="font-bold text-lg text-gray-900 dark:text-white mb-2">
+                                  {selectedTeam.name} vs {match.team1 === selectedTeam.name ? match.team2 : match.team1}
+                                </div>
+                                <div className="flex items-center gap-4 text-sm text-gray-600 dark:text-gray-300">
+                                  <span className="flex items-center gap-1">
+                                    <MapPin className="h-4 w-4" />
+                                    {match.venue}
+                                  </span>
+                                  <span>•</span>
+                                  <span>{match.type}</span>
+                                </div>
+                              </div>
+                              <Badge className="bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200">
+                                Completed
+                              </Badge>
+                            </div>
+                          </div>
+                        </motion.div>
+                      ))}
+                  </div>
+                </div>
+              </div>
+            </motion.div>
+          </div>
+        </motion.div>
+      )}
+
+      {/* Add custom animations */}
+      <style>{`
+        @keyframes spin-normal {
+          from { transform: translate(-50%, -50%) rotate(0deg); }
+          to { transform: translate(-50%, -50%) rotate(360deg); }
+        }
+        @keyframes spin-reverse {
+          from { transform: translate(-50%, -50%) rotate(360deg); }
+          to { transform: translate(-50%, -50%) rotate(0deg); }
+        }
+        @keyframes spin-slow {
+          from { transform: translate(-50%, -50%) rotate(0deg); }
+          to { transform: translate(-50%, -50%) rotate(360deg); }
+        }
+        .animate-spin-slow {
+          animation: spin-slow 20s linear infinite;
+        }
+      `}</style>
     </div>
   );
 }

@@ -1,4 +1,4 @@
-# HousesCricket Backend (MERN)
+# Cricket Championship Backend (MERN)
 
 ## Setup
 
