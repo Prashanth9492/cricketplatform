@@ -72,7 +72,9 @@ const Index = () => {
                         {item.imageUrls && item.imageUrls.length > 0 ? (
                           <>
                             <img
-                              src={item.imageUrls[0]}
+                              src={item.imageUrls[0].startsWith('http') 
+                                ? item.imageUrls[0] 
+                                : `http://localhost:5001${item.imageUrls[0]}`}
                               alt={item.title || 'Gallery image'}
                               className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700"
                               onError={(e) => {
