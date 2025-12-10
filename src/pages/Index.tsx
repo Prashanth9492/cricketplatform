@@ -44,62 +44,98 @@ const Index = () => {
         {!loadingGallery && recentGallery.length > 0 && (
           <section className="px-4 md:px-6 lg:px-8 xl:px-12 py-8">
             <div className="max-w-7xl mx-auto">
-              <div className="flex items-center justify-between mb-6">
+              <div className="flex items-center justify-between mb-8">
                 <div className="flex items-center gap-3">
-                  <Camera className="h-7 w-7 text-blue-600" />
-                  <h2 className="text-3xl font-bold text-foreground">Recent Gallery</h2>
+                  <Camera className="h-8 w-8 text-blue-600" />
+                  <h2 className="text-3xl md:text-4xl font-bold text-foreground">Recent Gallery</h2>
                 </div>
                 <Link
                   to="/gallery"
-                  className="inline-flex items-center gap-2 px-4 py-2 rounded-md bg-blue-600 text-white hover:bg-blue-700 transition-colors font-medium"
+                  className="inline-flex items-center gap-2 px-5 py-3 rounded-lg bg-blue-600 text-white hover:bg-blue-700 transition-colors font-medium text-lg"
                 >
                   View All
-                  <ArrowRight className="h-4 w-4" />
+                  <ArrowRight className="h-5 w-5" />
                 </Link>
               </div>
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
+              {/* Updated grid for larger cards */}
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 md:gap-8">
                 {recentGallery.map((item) => (
-                  <Link
-                    key={item._id}
-                    to="/gallery"
-                    className="group relative aspect-square overflow-hidden rounded-lg border bg-card hover:shadow-xl transition-all duration-300"
-                  >
-                    {item.imageUrls && item.imageUrls.length > 0 ? (
-                      <>
-                        <img
-                          src={`http://localhost:5001${item.imageUrls[0]}`}
-                          alt={item.title || 'Gallery image'}
-                          className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
-                          onError={(e) => {
-                            e.currentTarget.src = 'https://via.placeholder.com/300x300?text=No+Image';
-                          }}
-                        />
-                        <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300">
-                          <div className="absolute bottom-0 left-0 right-0 p-3">
-                            <p className="text-white text-sm font-semibold truncate">
-                              {item.title || 'Cricket Gallery'}
-                            </p>
-                            {item.category && (
-                              <p className="text-white/80 text-xs mt-1">{item.category}</p>
+                  <div key={item._id} className="group">
+                    <Link
+                      to="/gallery"
+                      className="block relative overflow-hidden rounded-xl border-2 border-gray-200 dark:border-gray-800 bg-card hover:shadow-2xl transition-all duration-300 hover:border-blue-500 hover:scale-[1.02]"
+                    >
+                      {/* Larger aspect ratio or fixed height */}
+                      <div className="aspect-[4/3] overflow-hidden">
+                        {item.imageUrls && item.imageUrls.length > 0 ? (
+                          <>
+                            <img
+                              src={`http://localhost:5001${item.imageUrls[0]}`}
+                              alt={item.title || 'Gallery image'}
+                              className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700"
+                              onError={(e) => {
+                                e.currentTarget.src = 'https://via.placeholder.com/600x450?text=No+Image';
+                              }}
+                            />
+                            <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/30 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500">
+                              <div className="absolute bottom-0 left-0 right-0 p-5">
+                                <p className="text-white text-xl font-bold mb-2">
+                                  {item.title || 'Cricket Gallery'}
+                                </p>
+                                {item.category && (
+                                  <div className="flex items-center gap-2">
+                                    <Badge className="bg-blue-600 hover:bg-blue-700 text-white px-3 py-1 text-sm">
+                                      {item.category}
+                                    </Badge>
+                                  </div>
+                                )}
+                              </div>
+                            </div>
+                            {item.imageUrls.length > 1 && (
+                              <div className="absolute top-4 right-4 bg-black/70 text-white text-sm px-3 py-2 rounded-xl flex items-center gap-2 backdrop-blur-sm">
+                                <Image className="h-4 w-4" />
+                                <span className="font-medium">{item.imageUrls.length} images</span>
+                              </div>
                             )}
-                          </div>
-                        </div>
-                        {item.imageUrls.length > 1 && (
-                          <div className="absolute top-2 right-2 bg-black/60 text-white text-xs px-2 py-1 rounded-full flex items-center gap-1">
-                            <Image className="h-3 w-3" />
-                            {item.imageUrls.length}
+                          </>
+                        ) : (
+                          <div className="w-full h-full flex flex-col items-center justify-center bg-gray-100 dark:bg-gray-800 p-8">
+                            <Camera className="h-16 w-16 text-gray-400 mb-4" />
+                            <p className="text-gray-500 dark:text-gray-400 text-lg">No Image Available</p>
                           </div>
                         )}
-                      </>
-                    ) : (
-                      <div className="w-full h-full flex items-center justify-center bg-gray-200 dark:bg-gray-800">
-                        <Camera className="h-12 w-12 text-gray-400" />
                       </div>
-                    )}
-                  </Link>
+                      
+                      {/* Optional: Card footer outside the image area */}
+                      <div className="p-5 bg-white dark:bg-gray-900">
+                        <div className="flex items-center justify-between">
+                          <div>
+                            <p className="text-lg font-semibold text-gray-900 dark:text-white line-clamp-1">
+                              {item.title || 'Gallery Item'}
+                            </p>
+                            {item.description && (
+                              <p className="text-gray-600 dark:text-gray-400 text-sm mt-1 line-clamp-2">
+                                {item.description}
+                              </p>
+                            )}
+                          </div>
+                          <ArrowRight className="h-5 w-5 text-blue-600 group-hover:translate-x-2 transition-transform" />
+                        </div>
+                      </div>
+                    </Link>
+                  </div>
                 ))}
               </div>
+              
+              {/* Alternative: For even larger cards with full-width on mobile */}
+              {/* 
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                {recentGallery.slice(0, 4).map((item) => (
+                  // ... same card structure but even larger
+                ))}
+              </div>
+              */}
             </div>
           </section>
         )}

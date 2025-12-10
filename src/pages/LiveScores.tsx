@@ -256,12 +256,17 @@ const LiveScores = () => {
                                   ? ((batsman.runs / batsman.ballsFaced) * 100).toFixed(1) 
                                   : '0.0';
                                 const isStriker = currentInnings?.striker === batsman.playerName;
+                                const isNonStriker = currentInnings?.nonStriker === batsman.playerName;
                                 
                                 return (
-                                  <tr key={idx} className={`border-b ${isStriker ? 'bg-yellow-50 dark:bg-yellow-950' : ''}`}>
+                                  <tr key={idx} className={`border-b ${
+                                    isStriker ? 'bg-yellow-50 dark:bg-yellow-950' : 
+                                    isNonStriker ? 'bg-blue-50 dark:bg-blue-950' : ''
+                                  }`}>
                                     <td className="p-2 font-medium">
                                       {batsman.playerName}
                                       {isStriker && <span className="text-primary ml-1">*</span>}
+                                      {isNonStriker && <span className="text-blue-600 ml-1">†</span>}
                                     </td>
                                     <td className="text-center p-2 font-bold">{batsman.runs}</td>
                                     <td className="text-center p-2">{batsman.ballsFaced}</td>
@@ -334,11 +339,16 @@ const LiveScores = () => {
                             .slice(0, 2)
                             .map((batsman, idx) => {
                               const isStriker = currentInnings?.striker === batsman.playerName;
+                              const isNonStriker = currentInnings?.nonStriker === batsman.playerName;
                               return (
-                                <div key={idx} className={`rounded-lg p-3 ${isStriker ? 'bg-yellow-100 dark:bg-yellow-900' : 'bg-accent/30'}`}>
+                                <div key={idx} className={`rounded-lg p-3 ${
+                                  isStriker ? 'bg-yellow-100 dark:bg-yellow-900' : 
+                                  isNonStriker ? 'bg-blue-100 dark:bg-blue-900' : 'bg-accent/30'
+                                }`}>
                                   <p className="font-semibold flex items-center gap-1">
                                     {batsman.playerName}
                                     {isStriker && <span className="text-xs text-primary">ON STRIKE</span>}
+                                    {isNonStriker && <span className="text-xs text-blue-600">NON-STRIKER</span>}
                                   </p>
                                   <p className="text-lg font-bold text-primary">
                                     {batsman.runs} ({batsman.ballsFaced})

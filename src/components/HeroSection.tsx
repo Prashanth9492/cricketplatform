@@ -1,12 +1,26 @@
 import { Link, useNavigate } from 'react-router-dom';
 import React, { useEffect, useRef, useState } from 'react';
-import { ArrowRight, Trophy, TrendingUp, Users } from 'lucide-react';
+import { ArrowRight, Trophy, TrendingUp, Users, Award } from 'lucide-react';
 import crick from "../assets/logos/Cricket Reward.mp4";
+import axios from 'axios';
+
+type TeamPoints = {
+  _id: string;
+  team: string;
+  matches: number;
+  wins: number;
+  losses: number;
+  draws?: number;
+  points: number;
+  season: string;
+  nrr?: number;
+};
 
 export function HeroSection() {
   const heroRef = useRef<HTMLDivElement | null>(null);
   const navigate = useNavigate();
   const [circleSize, setCircleSize] = useState("w-[300px] h-[300px]");
+  const [topTeams, setTopTeams] = useState<TeamPoints[]>([]);
 
   useEffect(() => {
     const updateCircleSize = () => {
@@ -17,6 +31,20 @@ export function HeroSection() {
     updateCircleSize();
     window.addEventListener("resize", updateCircleSize);
     return () => window.removeEventListener("resize", updateCircleSize);
+  }, []);
+
+  // Fetch top teams from points table
+  useEffect(() => {
+    const fetchTopTeams = async () => {
+      try {
+        const response = await axios.get('http://localhost:5001/api/points-table');
+        console.log('Fetched teams:', response.data); // Debug log
+        setTopTeams(response.data.slice(0, 3)); // Get top 3 teams
+      } catch (error) {
+        console.error('Error fetching points table:', error);
+      }
+    };
+    fetchTopTeams();
   }, []);
 
   return (
@@ -121,6 +149,55 @@ export function HeroSection() {
                 <p className="text-sm text-muted-foreground">Updates</p>
               </div>
             </div>
+
+            {/* Top Teams */}
+            {topTeams.length > 0 && (
+              <div className="mt-12">
+                <div className="flex items-center justify-between mb-4">
+                  <div className="flex items-center gap-2">
+                    <Award className="h-6 w-6 text-yellow-600" />
+                    <h2 className="text-2xl font-bold text-foreground">Top Teams</h2>
+                  </div>
+                  <Link
+                    to="/points-table"
+                    className="inline-flex items-center text-sm font-medium text-blue-600 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300"
+                  >
+                    More
+                    <ArrowRight className="ml-1 h-4 w-4" />
+                  </Link>
+                </div>
+                <div className="space-y-3">
+                  {topTeams.map((team, index) => (
+                    <div
+                      key={team._id}
+                      className="bg-card border rounded-lg p-4 flex items-center justify-between hover:shadow-md transition-shadow"
+                    >
+                      <div className="flex items-center gap-4">
+                        <div className={`flex-shrink-0 w-10 h-10 rounded-full flex items-center justify-center font-bold text-lg ${
+                          index === 0 ? 'bg-yellow-500 text-white' :
+                          index === 1 ? 'bg-gray-400 text-white' :
+                          'bg-amber-700 text-white'
+                        }`}>
+                          {index + 1}
+                        </div>
+                        <div>
+                          <p className="font-semibold text-foreground text-base">
+                            {team.team || 'Team Name'}
+                          </p>
+                          <p className="text-sm text-muted-foreground">
+                            P: {team.matches} | W: {team.wins} | L: {team.losses}
+                          </p>
+                        </div>
+                      </div>
+                      <div className="text-right">
+                        <p className="text-2xl font-bold text-foreground">{team.points}</p>
+                        <p className="text-xs text-muted-foreground">Points</p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
         </div>
       </section>
