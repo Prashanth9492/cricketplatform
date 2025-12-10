@@ -3,6 +3,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import { ArrowRight, Trophy, TrendingUp, Users, Award } from 'lucide-react';
 import crick from "../assets/logos/Cricket Reward.mp4";
 import axios from 'axios';
+import { getApiUrl } from '@/config/api';
 
 type TeamPoints = {
   _id: string;
@@ -37,7 +38,7 @@ export function HeroSection() {
   useEffect(() => {
     const fetchTopTeams = async () => {
       try {
-        const response = await axios.get('http://localhost:5001/api/points-table');
+        const response = await axios.get(getApiUrl('points-table'));
         console.log('Fetched teams:', response.data); // Debug log
         setTopTeams(response.data.slice(0, 3)); // Get top 3 teams
       } catch (error) {

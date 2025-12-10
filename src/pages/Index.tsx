@@ -6,6 +6,7 @@ import { Zap, Calendar, Trophy, TrendingUp, Users, Star, Camera, ArrowRight, Ima
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import axios from "axios";
+import { getApiUrl } from "@/config/api";
 
 type GalleryItem = {
   _id: string;
@@ -23,7 +24,7 @@ const Index = () => {
   useEffect(() => {
     const fetchRecentGallery = async () => {
       try {
-        const response = await axios.get('http://localhost:5001/api/galleries');
+        const response = await axios.get(getApiUrl('galleries'));
         // Get only 3 most recent items
         setRecentGallery(response.data.slice(0, 3));
       } catch (error) {
@@ -71,7 +72,7 @@ const Index = () => {
                         {item.imageUrls && item.imageUrls.length > 0 ? (
                           <>
                             <img
-                              src={`http://localhost:5001${item.imageUrls[0]}`}
+                              src={item.imageUrls[0]}
                               alt={item.title || 'Gallery image'}
                               className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700"
                               onError={(e) => {

@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from "react"
 import { X, Maximize2, Activity } from "lucide-react"
 import axios from "axios"
 import { socketService } from "@/lib/socket"
+import { MatchStartNotification } from "./MatchStartNotification"
 
 type Match = {
   _id: string
@@ -49,10 +50,12 @@ export function NativePiPScores() {
   const [isStartingPiP, setIsStartingPiP] = useState(false)
   const [socketConnected, setSocketConnected] = useState(false)
   const [userDismissed, setUserDismissed] = useState(false)
+  const [showMatchStartNotification, setShowMatchStartNotification] = useState(false)
 
   const videoRef = useRef<HTMLVideoElement>(null)
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const animationFrameRef = useRef<number>()
+  const previousMatchStatusRef = useRef<string | null>(null)
 
   // Check localStorage on mount
   useEffect(() => {
@@ -158,8 +161,21 @@ export function NativePiPScores() {
       
       // Listen for match started/ended
       socketService.onMatchStarted((match) => {
-        // console.log('🎯 PiP: Match started', match)
+        console.log('🎯 PiP: Match started', match)
         setCurrentMatch(match)
+        
+        // Auto-show PiP dialog when match starts
+        if (!isPiPActive && match.status === 'live') {
+          console.log('🚀 Auto-showing PiP dialog because match just started!')
+          setShowPermissionDialog(true)
+          setUserDismissed(false)
+          // Clear localStorage so dialog can show again
+          try {
+            localStorage.removeItem('pipDialogDismissed')
+          } catch (error) {
+            console.warn('⚠️ Could not clear localStorage:', error)
+          }
+        }
       })
     }
     
@@ -182,6 +198,40 @@ export function NativePiPScores() {
       setShowPermissionDialog(true)
     }
   }, [loading, isPiPActive, showPermissionDialog, userDismissed])
+
+  // Auto-show PiP dialog when match status changes to 'live'
+  useEffect(() => {
+    if (currentMatch) {
+      const previousStatus = previousMatchStatusRef.current
+      const currentStatus = currentMatch.status
+      
+      console.log('📊 Match status check:', { previousStatus, currentStatus, matchId: currentMatch.matchId })
+      
+      // If status changed from 'scheduled' to 'live', auto-show dialog
+      if (previousStatus === 'scheduled' && currentStatus === 'live') {
+        console.log('🎉 Match just went LIVE! Auto-showing PiP dialog')
+        
+        // Show match start notification
+        setShowMatchStartNotification(true)
+        
+        // Show PiP dialog after a brief moment
+        setTimeout(() => {
+          setShowPermissionDialog(true)
+          setUserDismissed(false)
+          
+          // Clear localStorage so dialog shows
+          try {
+            localStorage.removeItem('pipDialogDismissed')
+          } catch (error) {
+            console.warn('⚠️ Could not clear localStorage:', error)
+          }
+        }, 2000) // 2 second delay to let notification show first
+      }
+      
+      // Update previous status
+      previousMatchStatusRef.current = currentStatus
+    }
+  }, [currentMatch?.status, currentMatch?.matchId])
 
   // Draw Cricbuzz-style score on canvas
   const drawScoreToCanvas = () => {
@@ -543,6 +593,16 @@ export function NativePiPScores() {
 
   return (
     <>
+      {/* Match Start Notification */}
+      {showMatchStartNotification && currentMatch && (
+        <MatchStartNotification
+          matchTitle={currentMatch.tournament || 'Cricket Match'}
+          team1={currentMatch.team1}
+          team2={currentMatch.team2}
+          onDismiss={() => setShowMatchStartNotification(false)}
+        />
+      )}
+
       {/* Hidden video and canvas for PiP */}
       <video 
         ref={videoRef} 
@@ -564,10 +624,12 @@ export function NativePiPScores() {
               </div>
               <div className="flex-1">
                 <h3 className="text-white text-xl font-bold mb-2">
-                  🏏 Enable Floating Live Score?
+                  {currentMatch?.status === 'live' ? '🔴 MATCH IS LIVE!' : '🏏 Enable Floating Live Score?'}
                 </h3>
                 <p className="text-white/90 text-sm mb-4">
-                  Get live cricket scores that float on top of all your apps - VSCode, Chrome, and more!
+                  {currentMatch?.status === 'live' 
+                    ? 'The match has started! Enable floating scores to follow the action while multitasking.' 
+                    : 'Get live cricket scores that float on top of all your apps - VSCode, Chrome, and more!'}
                 </p>
 
                 {/* Match Preview */}
@@ -637,7 +699,7 @@ export function NativePiPScores() {
                     ) : (
                       <>
                         <Maximize2 className="h-4 w-4" />
-                        Enable Float
+                        {currentMatch?.status === 'live' ? 'Watch Live Now!' : 'Enable Float'}
                       </>
                     )}
                   </button>

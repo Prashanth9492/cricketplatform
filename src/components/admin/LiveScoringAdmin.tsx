@@ -16,7 +16,7 @@ interface Match {
   team2: string;
   venue: string;
   matchDate: Date;
-  status: 'upcoming' | 'live' | 'completed';
+  status: 'upcoming' | 'live' | 'completed' | 'scheduled';
   isLive: boolean;
   currentInnings: number;
   innings: Innings[];
@@ -408,7 +408,7 @@ const LiveScoringAdmin: React.FC = () => {
       });
       
       if (response.ok) {
-        if (selectedMatch?._id === matchId) {
+        if (selectedMatch?.matchId === matchId) {
           setSelectedMatch(null);
         }
         fetchMatches();
@@ -654,7 +654,7 @@ const LiveScoringAdmin: React.FC = () => {
                         }>
                           {match.status.toUpperCase()}
                         </Badge>
-                        {match.status === 'upcoming' && (
+                        {(match.status === 'upcoming' || match.status === 'scheduled') && (
                           <Button size="sm" onClick={(e) => {
                             e.stopPropagation();
                             startMatch(match.matchId);
@@ -668,7 +668,7 @@ const LiveScoringAdmin: React.FC = () => {
                           variant="ghost"
                           onClick={(e) => {
                             e.stopPropagation();
-                            deleteMatch(match._id);
+                            deleteMatch(match.matchId);
                           }} 
                           disabled={loading}
                           className="text-red-600 hover:text-red-700 hover:bg-red-50"
