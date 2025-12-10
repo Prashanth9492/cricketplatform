@@ -48,10 +48,33 @@ export function NativePiPScores() {
   const [loading, setLoading] = useState(true)
   const [isStartingPiP, setIsStartingPiP] = useState(false)
   const [socketConnected, setSocketConnected] = useState(false)
+  const [userDismissed, setUserDismissed] = useState(false)
 
   const videoRef = useRef<HTMLVideoElement>(null)
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const animationFrameRef = useRef<number>()
+
+  // Check localStorage on mount
+  useEffect(() => {
+    try {
+      const dismissed = localStorage.getItem('pipDialogDismissed')
+      console.log('📦 localStorage pipDialogDismissed:', dismissed)
+      if (dismissed === 'true') {
+        console.log('⚠️ User previously dismissed PiP dialog')
+        setUserDismissed(true)
+      }
+    } catch (error) {
+      console.warn('⚠️ localStorage access denied:', error)
+      // If localStorage is blocked, just proceed without checking
+    }
+    
+    // Check if PiP is already active
+    if (document.pictureInPictureElement) {
+      console.log('🎬 PiP already active on mount')
+      setIsPiPActive(true)
+      setShowPermissionDialog(false)
+    }
+  }, [])
 
   // Fetch live matches
   const fetchMatch = async () => {
@@ -152,11 +175,13 @@ export function NativePiPScores() {
 
   // Show permission dialog immediately when match is available
   useEffect(() => {
-    if (!loading && !isPiPActive && !showPermissionDialog) {
+    console.log('🔍 Dialog check:', { loading, isPiPActive, showPermissionDialog, userDismissed })
+    if (!loading && !isPiPActive && !showPermissionDialog && !userDismissed) {
+      console.log('✅ Showing PiP permission dialog')
       // Show dialog immediately when entering the website (even without match)
       setShowPermissionDialog(true)
     }
-  }, [loading, isPiPActive, showPermissionDialog])
+  }, [loading, isPiPActive, showPermissionDialog, userDismissed])
 
   // Draw Cricbuzz-style score on canvas
   const drawScoreToCanvas = () => {
@@ -360,6 +385,14 @@ export function NativePiPScores() {
   // Start native Picture-in-Picture
   const enterPiP = async () => {
     console.log('🎯 enterPiP called')
+    
+    // Check browser support first
+    if (!document.pictureInPictureEnabled) {
+      console.error('❌ Picture-in-Picture is not supported in this browser')
+      alert('Your browser does not support Picture-in-Picture mode. Please try Chrome, Edge, or a modern browser.')
+      return
+    }
+    
     if (isStartingPiP) {
       console.log('⏳ Already starting PiP, please wait...')
       return
@@ -372,17 +405,38 @@ export function NativePiPScores() {
 
       if (!video || !canvas) {
         console.error('❌ Video or canvas not ready')
+        alert('Video or canvas element not found. Please refresh the page.')
         setIsStartingPiP(false)
         return
       }
       console.log('✅ Video and canvas ready')
+      
+      // Get canvas context to verify it works
+      const ctx = canvas.getContext('2d')
+      if (!ctx) {
+        console.error('❌ Could not get canvas context')
+        alert('Canvas context not available. Please try a different browser.')
+        setIsStartingPiP(false)
+        return
+      }
 
       // Draw initial frame (works even without currentMatch)
       drawScoreToCanvas()
       console.log('✅ Canvas drawn')
+      
+      // Verify canvas has content
+      const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height)
+      const hasContent = imageData.data.some(pixel => pixel !== 0)
+      console.log('📊 Canvas has content:', hasContent)
 
       // Create stream from canvas
       const stream = canvas.captureStream(30) // 30 FPS
+      if (!stream || stream.getTracks().length === 0) {
+        console.error('❌ Failed to create stream from canvas')
+        alert('Could not create video stream. Please try again.')
+        setIsStartingPiP(false)
+        return
+      }
       video.srcObject = stream
       console.log('✅ Stream created with', stream.getTracks().length, 'tracks')
 
@@ -425,8 +479,9 @@ export function NativePiPScores() {
         throw new Error("Picture-in-Picture not supported")
       }
     } catch (error) {
-      // console.error("Failed to enter PiP mode:", error)
-      alert("Picture-in-Picture is not available in your browser. Please use Chrome, Edge, or Safari.")
+      console.error("❌ Failed to enter PiP mode:", error)
+      const errorMessage = error instanceof Error ? error.message : String(error)
+      alert(`Picture-in-Picture failed: ${errorMessage}\n\nPlease ensure:\n1. You're using a modern browser (Chrome/Edge/Safari)\n2. You've allowed autoplay permissions\n3. The page is in focus`)
     } finally {
       setIsStartingPiP(false)
     }
@@ -465,8 +520,15 @@ export function NativePiPScores() {
     const video = videoRef.current
     if (!video) return
 
-    const handleEnterPiP = () => setIsPiPActive(true)
-    const handleLeavePiP = () => setIsPiPActive(false)
+    const handleEnterPiP = () => {
+      console.log('🎬 enterpictureinpicture event fired')
+      setIsPiPActive(true)
+    }
+    
+    const handleLeavePiP = () => {
+      console.log('🚪 leavepictureinpicture event fired')
+      setIsPiPActive(false)
+    }
 
     video.addEventListener("enterpictureinpicture", handleEnterPiP)
     video.addEventListener("leavepictureinpicture", handleLeavePiP)
@@ -482,7 +544,14 @@ export function NativePiPScores() {
   return (
     <>
       {/* Hidden video and canvas for PiP */}
-      <video ref={videoRef} className="hidden" muted playsInline />
+      <video 
+        ref={videoRef} 
+        className="hidden" 
+        muted 
+        playsInline 
+        autoPlay
+        style={{ width: '800px', height: '250px' }}
+      />
       <canvas ref={canvasRef} className="hidden" />
 
       {/* Permission Dialog */}
@@ -542,7 +611,15 @@ export function NativePiPScores() {
                 {/* Action Buttons */}
                 <div className="flex gap-3">
                   <button
-                    onClick={() => setShowPermissionDialog(false)}
+                    onClick={() => {
+                      setShowPermissionDialog(false)
+                      setUserDismissed(true)
+                      try {
+                        localStorage.setItem('pipDialogDismissed', 'true')
+                      } catch (error) {
+                        console.warn('⚠️ Could not save to localStorage:', error)
+                      }
+                    }}
                     className="flex-1 px-4 py-2.5 bg-white/20 hover:bg-white/30 text-white rounded-lg font-semibold transition-colors"
                   >
                     Not Now
@@ -584,6 +661,29 @@ export function NativePiPScores() {
           </button>
         </div>
       )} */}
+
+      {/* Floating PiP Button - Shows if dialog dismissed and PiP not active */}
+      {!showPermissionDialog && !isPiPActive && (
+        <button
+          onClick={() => {
+            console.log('🔘 Floating PiP button clicked')
+            // Reset dismissed state and show dialog
+            setUserDismissed(false)
+            try {
+              localStorage.removeItem('pipDialogDismissed')
+              console.log('✅ Cleared pipDialogDismissed from localStorage')
+            } catch (error) {
+              console.warn('⚠️ Could not clear localStorage:', error)
+            }
+            setShowPermissionDialog(true)
+          }}
+          className="fixed bottom-6 right-6 z-[9998] bg-green-600 hover:bg-green-700 text-white p-4 rounded-full shadow-2xl transition-all hover:scale-110 flex items-center gap-2 group animate-pulse hover:animate-none"
+          title="Enable Floating Live Score"
+        >
+          <Maximize2 className="h-6 w-6" />
+          <span className="hidden group-hover:inline-block text-sm font-semibold mr-2 whitespace-nowrap">Live PiP</span>
+        </button>
+      )}
     </>
   )
 }

@@ -24,8 +24,8 @@ const Index = () => {
     const fetchRecentGallery = async () => {
       try {
         const response = await axios.get('http://localhost:5001/api/galleries');
-        // Get the 6 most recent items
-        setRecentGallery(response.data.slice(0, 6));
+        // Get only 3 most recent items
+        setRecentGallery(response.data.slice(0, 3));
       } catch (error) {
         console.error('Error fetching gallery:', error);
       } finally {

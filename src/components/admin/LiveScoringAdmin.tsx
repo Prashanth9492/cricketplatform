@@ -654,7 +654,7 @@ const LiveScoringAdmin: React.FC = () => {
                         }>
                           {match.status.toUpperCase()}
                         </Badge>
-                        {(match.status === 'upcoming' || match.status === 'scheduled') && (
+                        {match.status === 'upcoming' && (
                           <Button size="sm" onClick={(e) => {
                             e.stopPropagation();
                             startMatch(match.matchId);

@@ -121,9 +121,9 @@ const LiveScores = () => {
             <h1 className="text-3xl font-bold text-foreground flex items-center gap-3">
               Live Scores
               {socketConnected ? (
-                <Wifi className="h-6 w-6 text-green-500" title="Connected" />
+                <Wifi className="h-6 w-6 text-green-500" />
               ) : (
-                <WifiOff className="h-6 w-6 text-red-500" title="Disconnected" />
+                <WifiOff className="h-6 w-6 text-red-500" />
               )}
             </h1>
             <p className="text-muted-foreground mt-2">
