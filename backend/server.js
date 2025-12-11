@@ -106,10 +106,6 @@ const connectDB = async () => {
     throw err;
   }
 };
-    console.error('❌ MongoDB connection error:', err);
-    throw err;
-  }
-};
 
 // For Vercel serverless
 if (process.env.VERCEL) {
