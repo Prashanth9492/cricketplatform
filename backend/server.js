@@ -89,15 +89,23 @@ const PORT = process.env.PORT || 5000;
 let isConnected = false;
 
 const connectDB = async () => {
-  if (isConnected) {
+  if (isConnected && mongoose.connection.readyState === 1) {
     return;
   }
   
   try {
-    await mongoose.connect(process.env.MONGODB_URI);
+    await mongoose.connect(process.env.MONGODB_URI, {
+      serverSelectionTimeoutMS: 5000,
+      socketTimeoutMS: 45000,
+    });
     isConnected = true;
     console.log('✅ MongoDB connected');
   } catch (err) {
+    console.error('❌ MongoDB connection error:', err);
+    isConnected = false;
+    throw err;
+  }
+};
     console.error('❌ MongoDB connection error:', err);
     throw err;
   }
