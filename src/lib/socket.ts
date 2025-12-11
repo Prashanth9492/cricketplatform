@@ -4,10 +4,19 @@ import { io, Socket } from 'socket.io-client';
 const API_BASE = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5001/api';
 const SOCKET_URL = API_BASE.replace('/api', '');
 
+// Check if running on Vercel (Socket.IO not supported)
+const isProduction = SOCKET_URL.includes('vercel.app');
+
 class SocketService {
   private socket: Socket | null = null;
 
   connect() {
+    // Disable Socket.IO in production (Vercel doesn't support it)
+    if (isProduction) {
+      console.log('⚠️ Socket.IO disabled in production (using polling instead)');
+      return null;
+    }
+
     if (!this.socket) {
       this.socket = io(SOCKET_URL, {
         transports: ['polling', 'websocket'],
