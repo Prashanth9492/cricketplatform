@@ -85,13 +85,43 @@ app.use('/api/points-table', pointsTableRouter);
 
 const PORT = process.env.PORT || 5000;
 
-mongoose.connect(process.env.MONGODB_URI, { useNewUrlParser: true, useUnifiedTopology: true })
-  .then(() => {
-    server.listen(PORT, () => {
-      console.log(`✅ Server running on port ${PORT}`);
-      console.log(`🔄 Socket.IO enabled for real-time updates`);
-    });
-  })
-  .catch((err) => {
+// Connect to MongoDB
+let isConnected = false;
+
+const connectDB = async () => {
+  if (isConnected) {
+    return;
+  }
+  
+  try {
+    await mongoose.connect(process.env.MONGODB_URI);
+    isConnected = true;
+    console.log('✅ MongoDB connected');
+  } catch (err) {
     console.error('❌ MongoDB connection error:', err);
+    throw err;
+  }
+};
+
+// For Vercel serverless
+if (process.env.VERCEL) {
+  // Export app for Vercel
+  app.use(async (req, res, next) => {
+    await connectDB();
+    next();
   });
+} else {
+  // For local development
+  mongoose.connect(process.env.MONGODB_URI)
+    .then(() => {
+      server.listen(PORT, () => {
+        console.log(`✅ Server running on port ${PORT}`);
+        console.log(`🔄 Socket.IO enabled for real-time updates`);
+      });
+    })
+    .catch((err) => {
+      console.error('❌ MongoDB connection error:', err);
+    });
+}
+
+export default app;
