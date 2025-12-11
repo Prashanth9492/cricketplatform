@@ -13,8 +13,13 @@ const upload = multer({ storage });
 
 // GET all gallery items
 router.get('/', async (req, res) => {
-  const gallery = await Gallery.find();
-  res.json(gallery);
+  try {
+    const gallery = await Gallery.find();
+    res.json(gallery);
+  } catch (err) {
+    console.error('Gallery fetch error:', err);
+    res.status(500).json({ error: err.message });
+  }
 });
 
 // POST create gallery item (multiple images)
